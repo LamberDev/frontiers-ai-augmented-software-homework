@@ -1,0 +1,16 @@
+# AI harness local state (gentle-ai, CodeGraph, Claude Code, Engram)
+.atl/
+.codegraph/
+.claude/settings.local.json
+.claude/worktrees/
+engram-export*.json
+
+# Raw, unscrubbed AI transcripts and memory exports (publish only cleaned copies under docs/ai/)
+*.jsonl
+*.raw.md
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
