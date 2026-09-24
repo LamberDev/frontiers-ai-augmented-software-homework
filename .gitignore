@@ -14,3 +14,6 @@ engram-export*.json
 Thumbs.db
 .vscode/
 .idea/
+
+# Local-only scrub terms for the transcript exporter
+docs/ai/tools/scrub.local.txt

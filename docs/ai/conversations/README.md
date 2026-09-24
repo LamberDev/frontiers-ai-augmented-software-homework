@@ -7,10 +7,19 @@ Together they form the prompt history requested by Frontiers.
 
 1. Claude Code stores each session as a JSONL file under the user's
    `~/.claude/projects/<project-folder>/` directory, one file per session ID.
-2. Convert the session to readable Markdown: keep user prompts and assistant
-   answers; summarize or drop raw tool output that adds no insight.
-3. Clean it with [../SHARING.md](../SHARING.md): remove secrets, emails,
-   usernames, hostnames, absolute paths and anything from other projects.
+2. Convert and scrub it with [../tools/export_conversation.py](../tools/export_conversation.py):
+
+   ```bash
+   python docs/ai/tools/export_conversation.py <session.jsonl> \
+     docs/ai/conversations/YYYY-MM-DD-<topic>.md "Session YYYY-MM-DD: <topic>"
+   ```
+
+   It keeps prompts, answers and one-line tool-call summaries, drops model
+   thinking and raw tool output, and replaces emails, home paths and session
+   IDs. Personal terms (employer domain, real name, OS username) go one per
+   line in `docs/ai/tools/scrub.local.txt`, which git ignores.
+3. Review it against [../SHARING.md](../SHARING.md) and run the leak check
+   there: the script is a first pass, not a guarantee.
 4. Save it here and add a row to the index.
 
 ## Naming convention
@@ -37,5 +46,5 @@ Together they form the prompt history requested by Frontiers.
 
 | File | Date | Topic | Status |
 |------|------|-------|--------|
-| `2026-09-24-agent-harness.md` | 2026-09-24 | Branch creation and `docs/ai/` harness structure | Pending export |
+| `2026-09-24-agent-harness.md` | 2026-09-24 | Branch creation and `docs/ai/` harness structure | Exported, pending review |
 
