@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PeerReview.Api/PeerReview.Api.csproj" />
+    <Project Path="src/PeerReview.Application/PeerReview.Application.csproj" />
+    <Project Path="src/PeerReview.Domain/PeerReview.Domain.csproj" />
+    <Project Path="src/PeerReview.Infrastructure/PeerReview.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PeerReview.Application.UnitTests/PeerReview.Application.UnitTests.csproj" />
+    <Project Path="tests/PeerReview.Domain.UnitTests/PeerReview.Domain.UnitTests.csproj" />
+  </Folder>
+</Solution>
