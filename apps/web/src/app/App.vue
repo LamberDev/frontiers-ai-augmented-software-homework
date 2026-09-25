@@ -3,8 +3,10 @@ import { AppHeader } from '@/widgets/app-header'
 </script>
 
 <template>
-  <AppHeader />
-  <main>
-    <RouterView />
-  </main>
+  <v-app>
+    <AppHeader />
+    <v-main>
+      <RouterView />
+    </v-main>
+  </v-app>
 </template>
