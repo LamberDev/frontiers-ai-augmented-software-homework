@@ -46,5 +46,7 @@ Together they form the prompt history requested by Frontiers.
 
 | File | Date | Topic | Status |
 |------|------|-------|--------|
-| `2026-09-24-agent-harness.md` | 2026-09-24 | Branch creation and `docs/ai/` harness structure | Exported, pending review |
+| `2026-09-24-agent-harness.md` | 2026-09-24 | Branch creation and `docs/ai/` harness structure | Reviewed |
+| `2026-09-24-monorepo-architecture.md` | 2026-09-24 | Monorepo architecture: .NET 10 Clean/Screaming API and Vue 3 FSD scaffold | Reviewed |
+| `2026-09-25-git-hooks-linting.md` | 2026-09-25 | Lefthook pre-commit, ESLint/Prettier and `dotnet format`, review fixes | Reviewed |
 

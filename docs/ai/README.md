@@ -67,6 +67,82 @@ See [harness.md](harness.md) for how each rule is configured.
 | Running tests, builds and checks | Reviews results | Does and reports honestly |
 | Suggesting alternatives and risks | Weighs | Proposes |
 
+## What I designed and specified myself
+
+Quality starts with the first line of code, and with a good harness around
+the AI. That is why the architecture rules, the linters that enforce them and
+the acceptance checks were in place before any business code was written.
+
+The AI generated the code; the architecture, the rules it must obey and the way
+each step is verified are mine. I wrote them as specifications before any code
+existed (see
+[conversations/2026-09-24-monorepo-architecture.md](conversations/2026-09-24-monorepo-architecture.md)
+and [conversations/2026-09-25-git-hooks-linting.md](conversations/2026-09-25-git-hooks-linting.md)).
+
+**Backend architecture (`apps/api`)**
+
+- Clean Architecture with four layers and a strict dependency rule: Domain
+  depends on nothing; Application depends only on Domain and defines the ports;
+  Infrastructure implements them; Api is the only composition root.
+- Screaming Architecture inside every layer: folders by business capability
+  (`Users/RegisterUser`, `Reviewers/InviteReviewer`), never by technical type,
+  and ports named after the business need (`IUniversityDirectory`, not
+  `IFrontiersApiClient`).
+- Conventions: `.slnx` solution, `Directory.Build.props` with nullable,
+  implicit usings and `TreatWarningsAsErrors`, central NuGet versions, Minimal
+  APIs with one endpoint file per use case.
+
+**Frontend architecture (`apps/web`)**
+
+- Feature-Sliced Design with a fixed layer order
+  (`app → pages → widgets → features → entities → shared`), imports only
+  downward, kebab-case business slices that mirror the backend use cases, the
+  standard segments only, and each slice's public API only through `index.ts`.
+- Tooling: Vue 3.5.x (explicitly not the 3.6 RC), Vite, TypeScript, pnpm,
+  Vue Router, Vitest, the official Vue + TypeScript ESLint config, Steiger to
+  enforce the FSD rules, the `@/` alias and `VITE_API_URL` read from
+  `shared/config`.
+
+**Verification and testing strategy**
+
+- Acceptance criteria for every step, which the AI must run and show before
+  calling it done.
+- Linters that enforce the architecture, not only the code style: Steiger
+  (the official FSD linter) validates layer order and public-API-only imports
+  in `apps/web` and runs as `pnpm steiger`; on the backend, an architecture
+  test with NetArchTest or ArchUnitNET is planned to turn the dependency rule
+  into an automated check.
+- Dependency-rule checks per layer: project references, NuGet packages (so a
+  layer cannot break the rule through a package) and a grep for upward
+  `using`s, as a stopgap until an architecture test with NetArchTest or
+  ArchUnitNET.
+- xUnit test projects that mirror the business structure of the project they
+  test, Vitest on the frontend, and strict TDD (a failing test before any
+  implementation) as a standing rule for the AI.
+
+**Git hooks and linting**
+
+- The hook behaviour: Lefthook with per-app `root` and `glob`, only staged
+  files, both apps in parallel, `stage_fixed`, ESLint then Prettier, unfixable
+  ESLint errors failing the commit, and analyzers left to the build.
+- The acceptance scenarios, including the 10-second budget that led me to move
+  `dotnet format style` to CI.
+
+## How I steered the git hooks work
+
+The AI implemented and committed the pre-commit tooling and its review fixes;
+these were my calls along the way (see
+[conversations/2026-09-25-git-hooks-linting.md](conversations/2026-09-25-git-hooks-linting.md)):
+
+- I set a 10-second budget for the hook. When it measured ~17 s, I moved
+  `dotnet format style` to CI and kept only `dotnet format whitespace --folder`
+  in the hook (~2 s).
+- I kept `.gitattributes` and chose not to enable `EnforceCodeStyleInBuild`.
+- I granted every native review and required the fixes one commit per finding.
+- I asked for the suspected parallel `stage_fixed` race to be tested with real
+  mixed commits instead of accepting the reviewer's inference.
+- I deferred the task-document findings to the CI pipeline work.
+
 ## Model used and why
 
 Facts:
