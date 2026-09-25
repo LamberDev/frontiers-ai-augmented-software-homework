@@ -100,7 +100,43 @@ but no UI kit, theme or real components.
       3. Vuetify 4.2.2's theme instance exposes the active theme name as `theme.name` (a
          `Ref<string>`), not `theme.defaultTheme`; the test was written and corrected to assert
          `vuetify.theme.name.value === 'frontiers'`.
-    - Commit: pending user consent (not committed — see global no-commits-without-consent rule).
+    - Commit: `b64f51b` — feat(web): add Vuetify with Frontiers theme. RDD assess: medium, review_due (slice_budget_reached, 458 lines). Review granted: lens review-reliability, approved and acknowledged (lineage review-a9c9e463ebb05dc7); reviewed boundary advances to `b64f51b`.
+    - Advisory follow-ups: accepted by the user as mandatory (2026-09-25) and moved to T1.1: WARNING
+      `httpClient` throws synchronously when `VITE_API_URL` is missing instead of returning a
+      rejected Promise, untested; SUGGESTION no test mounts `createPeerReviewApp()`/`App.vue`;
+      SUGGESTION theme tests do not assert an observable effect (e.g. `v-theme--frontiers` class).
+- [x] T1.1 Review follow-ups: async httpClient rejection + test, app wiring mount test, observable
+  theme assertion. Route: delegated (writer trigger, 2+ non-trivial files).
+  - Evidence:
+    - httpClient (`src/shared/api/httpClient.ts` + new `src/shared/api/httpClient.test.ts`): RED —
+      `pnpm test -- httpClient` failed 1/2 (`expect(threwSynchronously).toBe(false)` got `true`,
+      i.e. the missing-config call threw synchronously instead of rejecting). Fix: made
+      `httpClient` `async` so the synchronous `getApiUrl()` throw is wrapped into a rejected
+      promise. GREEN — `pnpm test -- httpClient` 2/2 passed (missing-config rejects without a
+      synchronous throw; set-config case calls `fetch` with the URL resolved against the base and
+      passes `init` through, verified with `vi.stubGlobal('fetch', ...)`).
+    - App wiring (new `src/app/index.test.ts`, mounts `createPeerReviewApp()`, routes to
+      `/register`, asserts `.v-application` root, `.v-theme--frontiers` class, `AppHeader` nav and
+      the routed page text): GREEN with wiring intact (1/1). RED characterization — commenting out
+      `app.use(vuetify)` in `src/app/index.ts` failed the test (`[Vuetify] Could not find defaults
+      instance`); restored, re-verified GREEN (1/1). (jsdom has no `ResizeObserver`; stubbed it
+      with `vi.stubGlobal`, since `<v-app>`'s layout composable requires one — test-environment
+      plumbing, not part of the wiring under test.)
+    - Observable theme (`src/app/providers/vuetify.test.ts`): consolidated the two mount-related
+      tests into one (kept the internal `theme.name` ref test separately) mounting `<v-app>` and
+      asserting the externally observable effects — `.v-theme--frontiers` class on the
+      `.v-application` root, and the generated `#vuetify-theme-stylesheet` containing
+      `--v-theme-primary: 12,77,237` (rgb triplet for brand primary `#0C4DED`) — not just the
+      internal ref. RED characterization — changed `defaultTheme` to `'light'` in
+      `src/app/providers/vuetify.ts`: both tests failed (2/2); restored, re-verified GREEN (2/2).
+      (Consolidated to one `defineComponent` in the file to satisfy `vue/one-component-per-file`,
+      which a second component definition triggered as a lint warning.)
+    - Checks (from `apps/web`): `pnpm format` PASS (no changes needed) · `pnpm test` PASS (5
+      files/10 tests: `frontiersTheme.test.ts` 3, `vuetify.test.ts` 2, `apiUrl.test.ts` 2,
+      `httpClient.test.ts` 2, `app/index.test.ts` 1) · `pnpm lint` PASS (0 errors/0 warnings) ·
+      `pnpm steiger` PASS (no problems found) · `pnpm build` PASS (`vue-tsc -b && vite build`, 0
+      errors) · `pnpm format:check` PASS.
+    - Commit: `test(web): cover app wiring, theme and async http client` (the commit that follows `b64f51b`).
 - [ ] T2 Glass atoms and molecules in `shared/ui`: `GlassCard`, `GlassButton`, `GlassTextField`,
   `FormField`, `ResultAlert`, `ScoreBadge`, with tests for props, slots and accessibility states.
 - [ ] T3 Template: `GlassShell` layout (gradient background, blobs, container) and reworked
@@ -128,8 +164,12 @@ but no UI kit, theme or real components.
 ## Progress
 - 2026-09-25: plan saved; no implementation started.
 - 2026-09-25: T1 implemented and verified (Vuetify + `frontiers` theme). All checks green
-  (`pnpm test`, `pnpm lint`, `pnpm steiger`, `pnpm build`, `pnpm format:check`). Commit pending
-  user consent.
+  (`pnpm test`, `pnpm lint`, `pnpm steiger`, `pnpm build`, `pnpm format:check`). Committed as
+  `b64f51b`.
+- 2026-09-25: T1.1 implemented and verified (T1 review follow-ups, accepted as mandatory by the
+  user: async `httpClient` rejection, app wiring mount test, observable theme assertion). All
+  checks green (`pnpm test` 5 files/10 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`,
+  `pnpm format:check`). Committed with user consent.
 
 ## Next step
 T2 (glass atoms and molecules in `shared/ui`), once the user authorizes the next commit/task.
