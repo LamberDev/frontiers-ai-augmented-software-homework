@@ -4,7 +4,7 @@
   "description": "Repository tooling only (git hooks). App dependencies live in apps/*.",
   "packageManager": "pnpm@9.12.3",
   "scripts": {
-    "prepare": "lefthook install"
+    "prepare": "node scripts/install-hooks.mjs"
   },
   "devDependencies": {
     "lefthook": "^2.1.14"
