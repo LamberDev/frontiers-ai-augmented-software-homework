@@ -20,7 +20,8 @@ pre-commit:
             stage_fixed: true
 
     # Only whitespace formatting runs here: `--folder` skips loading the MSBuild workspace
-    # (~2 s instead of ~17 s). Code style (`dotnet format style`) is left to CI (pending), and
+    # (~2 s per run instead of ~6 s against PeerReview.slnx; whitespace + style took ~17 s).
+    # Code style (`dotnet format style`) is left to CI (pending), and
     # analyzers are enforced at build time by TreatWarningsAsErrors.
     - name: api
       root: apps/api/
