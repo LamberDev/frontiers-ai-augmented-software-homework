@@ -50,4 +50,5 @@ Together they form the prompt history requested by Frontiers.
 | `2026-09-24-monorepo-architecture.md` | 2026-09-24 | Monorepo architecture: .NET 10 Clean/Screaming API and Vue 3 FSD scaffold | Reviewed |
 | `2026-09-25-git-hooks-linting.md` | 2026-09-25 | Lefthook pre-commit, ESLint/Prettier and `dotnet format`, review fixes | Reviewed |
 | `2026-09-25-ci-workflow.md` | 2026-09-25 | GitHub Actions CI for api and web, `ci-success` gate, review follow-ups | Reviewed |
+| `2026-09-25-domain-model.md` | 2026-09-25 | Domain model: shared kernel, User/University, reviewer eligibility, EF Core InMemory persistence | Reviewed |
 
