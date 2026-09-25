@@ -12,7 +12,7 @@ Keep formatting and style consistent automatically, only on staged files, withou
   Prettier + `eslint-config-prettier` in `apps/web` (`.prettierrc`, `.prettierignore`,
   `format`/`format:check`), C# style rules in `.editorconfig` (severity `warning`),
   README "Git hooks" section.
-- Out: CI pipeline (tracked as pending T5), `dotnet format style` in the hook, analyzers in the hook (already enforced by `TreatWarningsAsErrors` on build).
+- Out: CI pipeline (T5, delivered by feature `ci-workflow`), `dotnet format style` in the hook, analyzers in the hook (already enforced by `TreatWarningsAsErrors` on build).
 
 ## Constraints
 - Per-app `root` + `glob`, `{staged_files}` only, parallel, `stage_fixed: true`.
@@ -38,7 +38,7 @@ Keep formatting and style consistent automatically, only on staged files, withou
 - [x] T3 API: `.editorconfig` C# rules with `warning` severity; `dotnet format` baseline clean.
       Route: inline (single file).
 - [x] T4 Verification of acceptance criteria (hook scenarios, timing), cleanup. Route: inline.
-- [ ] T5 CI pipeline (future feature): run `pnpm lint` (eslint), `pnpm format:check`
+- [x] T5 CI pipeline (done in feature `ci-workflow`, see `odd/tasks/ci-workflow.md`): run `pnpm lint` (eslint), `pnpm format:check`
       (`prettier --check`) in `apps/web`, and in `apps/api`
       `dotnet format whitespace PeerReview.slnx --verify-no-changes` plus
       `dotnet format style PeerReview.slnx --verify-no-changes`. Style moved here from the hook.
@@ -73,6 +73,9 @@ Keep formatting and style consistent automatically, only on staged files, withou
   Re-measured single `.cs`: Lefthook 2.15 s / 2.81 s (git commit wall 4.4-5.1 s). Test commits
   reset, probe file deleted.
 
+- 2026-09-25: T5 closed by `.github/workflows/ci.yml` (branch `chore/ci-workflow`): CI runs
+  `pnpm lint`, `pnpm format:check` in `apps/web` and `dotnet format whitespace` +
+  `dotnet format style` with `--verify-no-changes` in `apps/api`, all verified locally.
+
 ## Next step
-Final checks and commit `chore: add lefthook pre-commit with eslint, prettier and dotnet format`;
-T5 CI in a later feature.
+None: feature complete.
