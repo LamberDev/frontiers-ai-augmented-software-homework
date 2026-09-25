@@ -27,8 +27,9 @@ only). On each commit, only the staged files of each app are checked, in paralle
 - `apps/web`: `eslint --fix` then `prettier --write` (`*.{ts,vue,js}`); `prettier --write` for
   `*.{css,json,md}`. Unfixable ESLint errors fail the commit.
 - `apps/api`: `dotnet format whitespace --folder` on the staged `*.cs` files, using the rules in
-  the root `.editorconfig`. Code style (`dotnet format style`) is validated in CI to keep the
-  hook fast.
+  the root `.editorconfig`. Code style (`dotnet format style`) is left out of the hook to keep
+  it fast; it will be validated in CI (not implemented yet; until then run
+  `dotnet format style PeerReview.slnx` in `apps/api` manually).
 
 Fixed files are re-staged automatically. Configuration lives in `lefthook.yml`.
 `.gitattributes` normalizes line endings to LF so formatters do not report false changes on

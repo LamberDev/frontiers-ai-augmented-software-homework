@@ -18,8 +18,10 @@ indent_size = 4
 indent_size = 2
 
 # C# formatting and code style: whitespace is applied by `dotnet format whitespace` in the
-# pre-commit hook; style rules are validated in CI with `dotnet format style`. Rules to enforce
-# use severity `warning` (the default severity `dotnet format style` acts on).
+# pre-commit hook. Style rules are meant to be validated in CI with `dotnet format style`; that
+# CI step is not implemented yet, so today they are only applied when running
+# `dotnet format style` manually. Rules to enforce use severity `warning` (the default severity
+# `dotnet format style` acts on).
 # EnforceCodeStyleInBuild is not enabled, so these IDE rules do not fail the build under
 # TreatWarningsAsErrors.
 [*.cs]
