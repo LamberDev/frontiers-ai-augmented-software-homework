@@ -23,8 +23,9 @@ public class RegisterUserHandlerTests
         var userRepository = new FakeUserRepository();
         var unitOfWork = new FakeUnitOfWork();
         var handler = new RegisterUserHandler(directory, universityRepository, userRepository, unitOfWork);
+        var command = CreateCommand();
 
-        var result = await handler.HandleAsync(CreateCommand(), CancellationToken.None);
+        var result = await handler.HandleAsync(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("Ada Lovelace", result.Value.UserName);
@@ -35,6 +36,28 @@ public class RegisterUserHandlerTests
         Assert.Single(universityRepository.Added);
         Assert.Single(userRepository.Added);
         Assert.Equal(1, unitOfWork.SaveChangesCallCount);
+        Assert.Equal(command.UniversityName, directory.LastUniversityNameQueried);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithNewUniversityAndInvalidUser_StagesNothingAndDoesNotSave()
+    {
+        var directory = new FakeUniversityDirectory(
+            Result.Success(new UniversityDirectoryEntry(FrontiersOrganizationId: 42, Name: "MIT", Score: 88.5m)));
+        var universityRepository = new FakeUniversityRepository();
+        var userRepository = new FakeUserRepository();
+        var unitOfWork = new FakeUnitOfWork();
+        var handler = new RegisterUserHandler(directory, universityRepository, userRepository, unitOfWork);
+        var command = CreateCommand(userName: "");
+
+        var result = await handler.HandleAsync(command, CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        var validationError = Assert.IsType<ValidationError>(result.Error);
+        Assert.Contains(validationError.Errors, error => error.Code == UserErrors.UserNameRequired.Code);
+        Assert.Empty(universityRepository.Added);
+        Assert.Empty(userRepository.Added);
+        Assert.Equal(0, unitOfWork.SaveChangesCallCount);
     }
 
     [Fact]
@@ -56,6 +79,8 @@ public class RegisterUserHandlerTests
         Assert.Equal(50m, result.Value.University.Score);
         Assert.Empty(universityRepository.Added);
         Assert.Equal(1, unitOfWork.SaveChangesCallCount);
+        Assert.Single(userRepository.Added);
+        Assert.Equal(result.Value.UserId, userRepository.Added[0].Id);
     }
 
     [Fact]
@@ -135,7 +160,7 @@ public class RegisterUserHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenDirectoryReturnsInvalidUniversityData_ReturnsValidationErrorAndSavesNothing()
+    public async Task HandleAsync_WhenDirectoryReturnsInvalidUniversityData_ReturnsInvalidEntryFailureAndSavesNothing()
     {
         var directory = new FakeUniversityDirectory(Result.Success(new UniversityDirectoryEntry(42, "", 50m)));
         var universityRepository = new FakeUniversityRepository();
@@ -146,9 +171,9 @@ public class RegisterUserHandlerTests
         var result = await handler.HandleAsync(CreateCommand(), CancellationToken.None);
 
         Assert.True(result.IsFailure);
-        var validationError = Assert.IsType<ValidationError>(result.Error);
-        Assert.Contains(validationError.Errors, error => error.Code == UniversityErrors.NameRequired.Code);
+        Assert.Equal(UniversityDirectoryErrors.InvalidEntry, result.Error);
         Assert.Empty(universityRepository.Added);
+        Assert.Empty(userRepository.Added);
         Assert.Equal(0, unitOfWork.SaveChangesCallCount);
     }
 }
