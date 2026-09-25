@@ -11,7 +11,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -30,6 +30,8 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       # Third-party action: pinned to the v4.0.3 commit.
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
@@ -60,6 +62,8 @@ jobs:
         working-directory: apps/api
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -109,7 +113,8 @@ jobs:
         working-directory: apps/web
     steps:
       - uses: actions/checkout@v7
-
+        with:
+          persist-credentials: false
       # Version comes from the `packageManager` field of apps/web/package.json.
       - uses: pnpm/action-setup@v6
         with:
@@ -158,6 +163,7 @@ jobs:
           echo "changes=$CHANGES_RESULT api=$API_RESULT web=$WEB_RESULT"
           for result in "$CHANGES_RESULT" "$API_RESULT" "$WEB_RESULT"; do
             case "$result" in
-              failure | cancelled) exit 1 ;;
+              success | skipped) ;;
+              *) exit 1 ;;
             esac
           done
