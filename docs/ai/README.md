@@ -78,6 +78,14 @@ Facts:
 
 ## When I coded without AI
 
+- **Locale-independent git probe in `scripts/install-hooks.mjs`.** A native
+  review found that the "not a git repository" check depended on git's English
+  output, so a localized git would fail `pnpm install` outside a repository. I
+  wrote the fix by hand: git now runs with `LC_ALL=C` and `LANGUAGE=C`, and the
+  error message includes `probe.error?.message` so spawn failures are no longer
+  silent. The AI only ran my version against the five install scenarios
+  (repository, `LEFTHOOK=0`, no repository, no git, corrupted config).
+
 ## Evidence index
 
 | Evidence | Location |

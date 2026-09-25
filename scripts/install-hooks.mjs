@@ -9,7 +9,11 @@ if (process.env.LEFTHOOK === '0') {
   process.exit(0)
 }
 
-const probe = spawnSync('git', ['rev-parse', '--git-dir'], { encoding: 'utf8' })
+// Force English output so the "not a git repository" check works on any system locale.
+const probe = spawnSync('git', ['rev-parse', '--git-dir'], {
+  encoding: 'utf8',
+  env: { ...process.env, LC_ALL: 'C', LANGUAGE: 'C' },
+})
 
 if (probe.error?.code === 'ENOENT') {
   console.log('git not found: skipping git hooks installation.')
@@ -22,7 +26,8 @@ if (probe.status !== 0) {
     console.log('Not a git repository: skipping git hooks installation.')
     process.exit(0)
   }
-  console.error(`git rev-parse failed; git hooks were not installed:\n${stderr}`)
+  const reason = [probe.error?.message, stderr.trim()].filter(Boolean).join('\n')
+  console.error(`git rev-parse failed; git hooks were not installed:\n${reason}`)
   process.exit(1)
 }
 
