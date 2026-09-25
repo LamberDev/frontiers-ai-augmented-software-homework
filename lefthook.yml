@@ -1,0 +1,29 @@
+# Git hooks managed by Lefthook (installed by `pnpm install` at the repository root).
+# Globs are always matched from the repository root; `root` only sets the working directory,
+# so `{staged_files}` are passed relative to each app folder.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: web
+      root: apps/web/
+      group:
+        piped: true
+        jobs:
+          - name: eslint
+            glob: 'apps/web/**/*.{ts,vue,js}'
+            run: pnpm exec eslint --fix {staged_files}
+            stage_fixed: true
+          - name: prettier
+            glob: 'apps/web/**/*.{ts,vue,js,css,json,md}'
+            run: pnpm exec prettier --write {staged_files}
+            stage_fixed: true
+
+    # Only whitespace formatting runs here: `--folder` skips loading the MSBuild workspace
+    # (~2 s instead of ~17 s). Code style (`dotnet format style`) is validated in CI, and
+    # analyzers are enforced at build time by TreatWarningsAsErrors.
+    - name: api
+      root: apps/api/
+      glob: 'apps/api/**/*.cs'
+      run: dotnet format whitespace --folder --include {staged_files}
+      stage_fixed: true

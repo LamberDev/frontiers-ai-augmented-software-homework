@@ -17,11 +17,39 @@ indent_size = 4
 [*.{csproj,props,slnx}]
 indent_size = 2
 
-# C# conventions (kept modest: no analyzer severities are raised to error,
-# so TreatWarningsAsErrors does not turn style preferences into build failures)
+# C# formatting and code style: whitespace is applied by `dotnet format whitespace` in the
+# pre-commit hook; style rules are validated in CI with `dotnet format style`. Rules to enforce
+# use severity `warning` (the default severity `dotnet format style` acts on).
+# EnforceCodeStyleInBuild is not enabled, so these IDE rules do not fail the build under
+# TreatWarningsAsErrors.
 [*.cs]
-csharp_style_namespace_declarations = file_scoped:suggestion
+# Layout: Allman braces, 4 spaces (indent_size above)
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+
+# Namespaces and usings: file-scoped namespaces, usings outside, System first
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_using_directive_placement = outside_namespace:warning
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+dotnet_diagnostic.IDE0005.severity = warning
+
+# var when the type is apparent
+csharp_style_var_when_type_is_apparent = true:warning
 csharp_style_var_for_built_in_types = true:suggestion
-csharp_style_var_when_type_is_apparent = true:suggestion
 csharp_style_var_elsewhere = true:suggestion
-csharp_using_directive_placement = outside_namespace:suggestion
+
+# Mandatory braces
+csharp_prefer_braces = true:warning
+
+# Extra consistency rules
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_qualification_for_event = false:warning
+dotnet_style_predefined_type_for_locals_parameters_members = true:warning
+dotnet_style_predefined_type_for_member_access = true:warning
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+dotnet_style_readonly_field = true:warning
