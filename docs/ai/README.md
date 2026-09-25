@@ -67,6 +67,21 @@ See [harness.md](harness.md) for how each rule is configured.
 | Running tests, builds and checks | Reviews results | Does and reports honestly |
 | Suggesting alternatives and risks | Weighs | Proposes |
 
+## How I steered the git hooks work
+
+The AI implemented and committed the pre-commit tooling and its review fixes;
+these were my calls along the way (see
+[conversations/2026-09-25-git-hooks-linting.md](conversations/2026-09-25-git-hooks-linting.md)):
+
+- I set a 10-second budget for the hook. When it measured ~17 s, I moved
+  `dotnet format style` to CI and kept only `dotnet format whitespace --folder`
+  in the hook (~2 s).
+- I kept `.gitattributes` and chose not to enable `EnforceCodeStyleInBuild`.
+- I granted every native review and required the fixes one commit per finding.
+- I asked for the suspected parallel `stage_fixed` race to be tested with real
+  mixed commits instead of accepting the reviewer's inference.
+- I deferred the task-document findings to the CI pipeline work.
+
 ## Model used and why
 
 Facts:
