@@ -4,4 +4,8 @@
     <ProjectReference Include="..\PeerReview.Application\PeerReview.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+  </ItemGroup>
+
 </Project>

@@ -55,8 +55,16 @@ use case (e.g. `Users/RegisterUser/`, `Reviewers/InviteReviewer/`).
 ## Tests
 
 - xUnit, one test project per layer under test (`PeerReview.Domain.UnitTests`,
-  `PeerReview.Application.UnitTests`), mirroring the business folder structure being tested.
+  `PeerReview.Application.UnitTests`, `PeerReview.Infrastructure.IntegrationTests`), mirroring the
+  business folder structure being tested.
 - A test project references only the project it tests.
+- `PeerReview.Infrastructure.IntegrationTests` exercises EF Core InMemory persistence
+  (`PeerReviewDbContext`, repositories, `AddInfrastructure()`). Each test uses its own isolated
+  in-memory database name (e.g. a fresh `Guid`) and reads back through a **new** `DbContext`/
+  repository instance, so it proves persistence rather than change tracking. The InMemory
+  provider does **not** enforce unique indexes (e.g. `University.FrontiersOrganizationId`); the
+  no-duplicates guarantee for that value comes from the get-or-create logic in the `RegisterUser`
+  handler (a later step), not from the database.
 
 ## Verification commands
 
@@ -69,4 +77,5 @@ dotnet list src/PeerReview.Domain reference    # (none)
 dotnet list src/PeerReview.Application reference   # only Domain
 dotnet list src/PeerReview.Infrastructure reference # only Application
 dotnet list src/PeerReview.Api reference       # Application + Infrastructure
+dotnet list tests/PeerReview.Infrastructure.IntegrationTests reference # only Infrastructure
 ```
