@@ -76,8 +76,12 @@ and persistence. This step builds those foundations without use cases, HTTP clie
     `ReviewerEligibilityPolicyTests.Evaluate_WithInsufficientPublicationsAndScore_ReturnsBothReasonsInOrder`,
     `Evaluate_WithNullScore_ReturnsOnlyUnknownUniversityScore`). GREEN: 57 passed / 0 failed (48
     T1-T3 + 9 T4). `dotnet format` clean, `dotnet build -c Release`: 0 warnings / 0 errors.
-    Commit: (recorded in T5's evidence).
-- [ ] T5 Application persistence ports: `IRepository<TEntity,TId>`, `IUnitOfWork`, `IUserRepository`, `IUniversityRepository`. Route: delegated.
+    Commit: `f3cf66a` — feat(domain): add reviewer eligibility policy.
+- [x] T5 Application persistence ports: `IRepository<TEntity,TId>`, `IUnitOfWork`, `IUserRepository`, `IUniversityRepository`. Route: delegated.
+  - Evidence: interfaces only, no behaviour — no RED per spec. Verified by
+    `dotnet build PeerReview.slnx -c Release`: 0 warnings / 0 errors. Full suite still green: 57
+    passed / 0 failed (unchanged by this task). `dotnet format` clean. Commit: (recorded in T6's
+    evidence).
 - [ ] T6 Infrastructure EF Core InMemory (DbContext, configurations, repositories, `AddInfrastructure()`), integration tests project, `AGENTS.md` Tests section. Route: delegated.
 
 ## Acceptance criteria / checks (from `apps/api`)
@@ -89,4 +93,5 @@ and persistence. This step builds those foundations without use cases, HTTP clie
   usings in Domain/Application is empty.
 
 ## Progress
-- Branch created. T1 (SharedKernel), T2 (Universities), T3 (Users), T4 (Reviewers) done. Next: T5.
+- Branch created. T1 (SharedKernel), T2 (Universities), T3 (Users), T4 (Reviewers), T5
+  (Application persistence ports) done. Next: T6.
