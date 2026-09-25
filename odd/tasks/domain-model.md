@@ -69,8 +69,14 @@ and persistence. This step builds those foundations without use cases, HTTP clie
     `UserTests.Create_WithMultipleInvalidInputs_AccumulatesAllErrors`,
     `UserTests.Create_WithUserNameOverMaxLength_ReturnsUserNameTooLongError`). GREEN: 48 passed / 0
     failed (33 T1+T2 + 15 T3). `dotnet format` clean, `dotnet build -c Release`: 0 warnings / 0
-    errors. Commit: (recorded in T4's evidence).
-- [ ] T4 Reviewers: `ReviewerEligibilityPolicy`, `ReviewerEligibility`, `IneligibilityReason`, `ReviewerIneligibilityReasons` + tests. Route: delegated.
+    errors. Commit: `7ba19a5` — feat(domain): add User entity with validated factory.
+- [x] T4 Reviewers: `ReviewerEligibilityPolicy`, `ReviewerEligibility`, `IneligibilityReason`, `ReviewerIneligibilityReasons` + tests. Route: delegated.
+  - Evidence: RED observed with `dotnet test PeerReview.slnx -c Release`: 9 failed / 0 passed, all
+    `System.NotImplementedException` from `ReviewerEligibilityPolicy.Evaluate` (e.g.
+    `ReviewerEligibilityPolicyTests.Evaluate_WithInsufficientPublicationsAndScore_ReturnsBothReasonsInOrder`,
+    `Evaluate_WithNullScore_ReturnsOnlyUnknownUniversityScore`). GREEN: 57 passed / 0 failed (48
+    T1-T3 + 9 T4). `dotnet format` clean, `dotnet build -c Release`: 0 warnings / 0 errors.
+    Commit: (recorded in T5's evidence).
 - [ ] T5 Application persistence ports: `IRepository<TEntity,TId>`, `IUnitOfWork`, `IUserRepository`, `IUniversityRepository`. Route: delegated.
 - [ ] T6 Infrastructure EF Core InMemory (DbContext, configurations, repositories, `AddInfrastructure()`), integration tests project, `AGENTS.md` Tests section. Route: delegated.
 
@@ -83,4 +89,4 @@ and persistence. This step builds those foundations without use cases, HTTP clie
   usings in Domain/Application is empty.
 
 ## Progress
-- Branch created. T1 (SharedKernel), T2 (Universities), T3 (Users) done. Next: T4.
+- Branch created. T1 (SharedKernel), T2 (Universities), T3 (Users), T4 (Reviewers) done. Next: T5.
