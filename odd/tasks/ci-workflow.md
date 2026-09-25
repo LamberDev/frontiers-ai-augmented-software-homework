@@ -12,12 +12,13 @@ definitive quality gate, the hook only gives fast local feedback.
 ## Scope
 - In: `.github/workflows/ci.yml` (jobs `changes`, `api`, `web`, `ci-success`),
   `apps/api/global.json`, `apps/web/.nvmrc`, `packageManager` in `apps/web/package.json`,
-  README "Integración continua" section, closing T5 in `git-hooks-linting.md`.
+  README "Continuous integration" section, closing T5 in `git-hooks-linting.md`.
 - Out: branch protection settings (done by the user in GitHub), push, deployment.
 
 ## Constraints
-- Triggers: `pull_request` to `main`, `push` to `main`. `concurrency` per branch with
-  `cancel-in-progress: true`. Workflow `permissions: contents: read`.
+- Triggers: `pull_request` to `main`, `push` to `main`. `concurrency` per branch;
+  `cancel-in-progress` only on `pull_request` (every push to `main` is verified). Workflow
+  `permissions: contents: read`.
 - Latest major of each official action, verified with `gh api repos/<r>/releases/latest`
   (2026-09-25): `actions/checkout@v7`, `actions/setup-dotnet@v6`, `actions/setup-node@v7`,
   `pnpm/action-setup@v6`, `actions/cache@v6`, `actions/upload-artifact@v7`;
@@ -41,6 +42,12 @@ definitive quality gate, the hook only gives fast local feedback.
   and supports YAML anchors so the shared files are declared once.
 - `ci-success` also needs `changes`: if `changes` fails, `api` and `web` are skipped, and
   "skipped" alone would make `ci-success` pass.
+- `ci-success` uses an allowlist: only `success` and `skipped` pass; any other result
+  (`failure`, `cancelled`, empty or unexpected) fails, so the required check fails closed.
+- Cancellation only on pull requests: cancelling on `main` would leave an earlier merge commit
+  unverified with a red `ci-success` when two PRs merge in quick succession.
+- `persist-credentials: false` on every checkout: no job needs git credentials after checkout,
+  so the token is not left in the git config for dependency install scripts.
 - Web install runs in `apps/web`: it has its own `pnpm-lock.yaml` and there is no
   `pnpm-workspace.yaml`; the root `package.json`/lockfile only hold Lefthook (tooling). `LEFTHOOK: 0`
   is kept as requested (defensive; the `apps/web` install does not run the root `prepare`).
@@ -53,7 +60,7 @@ definitive quality gate, the hook only gives fast local feedback.
 - [x] T1 Config files: `apps/api/global.json`, `apps/web/.nvmrc`, `packageManager` in
       `apps/web/package.json`. Route: inline (mechanical).
 - [x] T2 Workflow `.github/workflows/ci.yml`. Route: inline (single file, design understood).
-- [x] T3 README "Integración continua"; close T5 in `git-hooks-linting.md`. Route: inline (docs).
+- [x] T3 README "Continuous integration"; close T5 in `git-hooks-linting.md`. Route: inline (docs).
 - [x] T4 Verification: `actionlint`, every job command locally, `ci-success` truth table.
       Route: inline.
 - [x] T5 Commit `ci: add github actions workflow for api and web` on `chore/ci-workflow`
@@ -80,7 +87,14 @@ definitive quality gate, the hook only gives fast local feedback.
     first CI run is the first execution on Node 24.
   - `ci-success` script simulated: web only PASS, api only PASS, api failure FAIL, both skipped
     PASS, cancelled FAIL, `changes` failure FAIL.
-- T5 commit on `chore/ci-workflow` (hash in the commit itself / `git log`). No push.
+- T5 commit `cbe987c` on `chore/ci-workflow`. Native review (4 lenses) approved with
+  non-blocking suggestions.
+- Follow-up commit `b9f93a1` (by the user) applying the review suggestions: PR-only
+  cancellation, `persist-credentials: false`, `ci-success` allowlist. `actionlint` 0 errors;
+  `ci-success` re-simulated: web only PASS, api only PASS, api failure FAIL, both skipped PASS,
+  cancelled FAIL, `changes` failure FAIL, empty result FAIL. Native review declined by the user
+  for this commit.
+- Docs updated to match the workflow (this file, README). No push.
 
 ## Next step
 User pushes the branch and opens the PR to see the first real run, then marks `CI success` as

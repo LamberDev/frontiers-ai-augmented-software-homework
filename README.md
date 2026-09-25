@@ -51,8 +51,10 @@ to `main`. All checks run in verify-only mode; nothing is rewritten.
 
 A `changes` job runs each app job only when its app, or a shared file (`.editorconfig`,
 `.gitattributes`, `.github/workflows/**`), changed; both app jobs run in parallel.
-`ci-success` is the only required status check in branch protection: it passes when the app
-jobs succeed or are skipped by the path filter, and fails if any job failed or was cancelled.
+`ci-success` is the only required status check in branch protection: it passes only when every
+job succeeded or was skipped by the path filter, and fails on any other result (failed,
+cancelled or unexpected). A new push to a pull request cancels its previous run; runs on `main`
+are never cancelled, so every commit on `main` is verified.
 
 The pre-commit hook gives fast local feedback on staged files, but it can be skipped
 (`--no-verify`, `LEFTHOOK=0`); CI is the definitive validation and also runs the checks that
