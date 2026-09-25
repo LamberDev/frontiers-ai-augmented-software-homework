@@ -1,0 +1,169 @@
+# CI is the definitive quality gate: the pre-commit hook can be skipped locally, CI cannot.
+# Every check runs in verify-only mode (nothing is rewritten), including the checks left out of
+# the hook for speed (`dotnet format style`, build, tests, Steiger, web build).
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      # paths-filter lists the PR files through the GitHub API on pull_request events.
+      pull-requests: read
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # Third-party action: pinned to the v4.0.3 commit.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            shared: &shared
+              - '.editorconfig'
+              - '.gitattributes'
+              - '.github/workflows/**'
+            api:
+              - *shared
+              - 'apps/api/**'
+            web:
+              - *shared
+              - 'apps/web/**'
+
+  api:
+    name: API (.NET)
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: apps/api/global.json
+
+      # setup-dotnet's built-in cache requires packages.lock.json, which this repo does not use.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('apps/api/Directory.Packages.props', 'apps/api/**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore PeerReview.slnx
+
+      - name: Check whitespace formatting
+        run: dotnet format whitespace PeerReview.slnx --verify-no-changes --no-restore
+
+      - name: Check code style
+        run: dotnet format style PeerReview.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build PeerReview.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test PeerReview.slnx -c Release --no-build --logger trx --results-directory TestResults
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-test-results
+          path: apps/api/TestResults/**/*.trx
+          if-no-files-found: warn
+
+  web:
+    name: Web (Vue)
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # No commits happen in CI, so git hooks are never installed.
+      LEFTHOOK: 0
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # Version comes from the `packageManager` field of apps/web/package.json.
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: apps/web/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: apps/web/.nvmrc
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Check architecture (Steiger)
+        run: pnpm steiger
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  # The only required check in branch protection: jobs skipped by the path filter would block
+  # PRs if they were required. Skipped jobs pass; failed or cancelled ones fail this job.
+  # `changes` is included because its failure would skip `api` and `web`.
+  ci-success:
+    name: CI success
+    needs: [changes, api, web]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check job results
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          API_RESULT: ${{ needs.api.result }}
+          WEB_RESULT: ${{ needs.web.result }}
+        run: |
+          echo "changes=$CHANGES_RESULT api=$API_RESULT web=$WEB_RESULT"
+          for result in "$CHANGES_RESULT" "$API_RESULT" "$WEB_RESULT"; do
+            case "$result" in
+              success | skipped) ;;
+              *) exit 1 ;;
+            esac
+          done
