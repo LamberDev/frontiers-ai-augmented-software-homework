@@ -1,6 +1,9 @@
 # Git hooks managed by Lefthook (installed by `pnpm install` at the repository root).
 # Globs are always matched from the repository root; `root` only sets the working directory,
 # so `{staged_files}` are passed relative to each app folder.
+# `doublestar` makes `**/` match zero or more directories, so files directly under an app
+# folder (e.g. apps/web/eslint.config.ts) are matched too.
+glob_matcher: doublestar
 
 pre-commit:
   parallel: true
