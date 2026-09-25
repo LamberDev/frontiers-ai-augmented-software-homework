@@ -55,8 +55,14 @@ and persistence. This step builds those foundations without use cases, HTTP clie
     `EntityTests.Equals_SameIdDifferentConcreteType_ReturnsFalse`,
     `ValidationErrorTests.Constructor_WithErrors_CarriesAllErrorsAndValidationType`). GREEN: 18
     passed / 0 failed. `dotnet format` (whitespace+style) clean, `dotnet build -c Release`: 0
-    warnings / 0 errors. Commit: (recorded in T2's evidence, see below).
-- [ ] T2 Universities: `University`, `UniversityErrors` + tests. Route: delegated.
+    warnings / 0 errors. Commit: `e333035` — feat(domain): add shared kernel result and entity abstractions.
+- [x] T2 Universities: `University`, `UniversityErrors` + tests. Route: delegated.
+  - Evidence: RED observed with `dotnet test PeerReview.slnx -c Release`: 15 failed / 0 passed, all
+    `System.NotImplementedException` from `University.Create` (e.g.
+    `UniversityTests.Create_WithMultipleInvalidInputs_AccumulatesAllErrors`,
+    `UniversityTests.Create_WithNameOverMaxLength_ReturnsNameTooLongError`). GREEN: 33 passed / 0
+    failed (18 T1 + 15 T2). `dotnet format` clean, `dotnet build -c Release`: 0 warnings / 0
+    errors. Commit: (recorded in T3's evidence).
 - [ ] T3 Users: `User`, `UserErrors` + tests. Route: delegated.
 - [ ] T4 Reviewers: `ReviewerEligibilityPolicy`, `ReviewerEligibility`, `IneligibilityReason`, `ReviewerIneligibilityReasons` + tests. Route: delegated.
 - [ ] T5 Application persistence ports: `IRepository<TEntity,TId>`, `IUnitOfWork`, `IUserRepository`, `IUniversityRepository`. Route: delegated.
@@ -71,4 +77,4 @@ and persistence. This step builds those foundations without use cases, HTTP clie
   usings in Domain/Application is empty.
 
 ## Progress
-- Branch created. T1 done (SharedKernel). Next: T2.
+- Branch created. T1 (SharedKernel) and T2 (Universities) done. Next: T3.
