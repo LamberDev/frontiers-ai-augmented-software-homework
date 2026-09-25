@@ -1,0 +1,36 @@
+# Git hooks managed by Lefthook (installed by `pnpm install` at the repository root).
+# Globs are always matched from the repository root; `root` only sets the working directory,
+# so `{staged_files}` are passed relative to each app folder.
+# `doublestar` makes `**/` match zero or more directories, so files directly under an app
+# folder (e.g. apps/web/eslint.config.ts) are matched too.
+glob_matcher: doublestar
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: web
+      root: apps/web/
+      group:
+        piped: true
+        jobs:
+          - name: eslint
+            glob: 'apps/web/**/*.{ts,vue,js}'
+            run: pnpm exec eslint --fix {staged_files}
+            stage_fixed: true
+            fail_text: 'Fix the ESLint errors above. If eslint was not found, run `pnpm install` in apps/web.'
+          - name: prettier
+            glob: 'apps/web/**/*.{ts,vue,js,css,json,md}'
+            run: pnpm exec prettier --write {staged_files}
+            stage_fixed: true
+            fail_text: 'Prettier failed. If prettier was not found, run `pnpm install` in apps/web.'
+
+    # Only whitespace formatting runs here: `--folder` skips loading the MSBuild workspace
+    # (~2 s per run instead of ~6 s against PeerReview.slnx; whitespace + style took ~17 s).
+    # Code style (`dotnet format style`) is left to CI (pending), and
+    # analyzers are enforced at build time by TreatWarningsAsErrors.
+    - name: api
+      root: apps/api/
+      glob: 'apps/api/**/*.cs'
+      run: dotnet format whitespace --folder --include {staged_files}
+      stage_fixed: true
+      fail_text: 'dotnet format failed. If dotnet was not found, install the .NET SDK 10 (see README).'

@@ -1,0 +1,7 @@
+# Keep LF in the working tree on every OS (matches .editorconfig end_of_line = lf),
+# regardless of the local core.autocrlf setting.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary

@@ -10,7 +10,9 @@
     "test": "vitest run",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "steiger": "steiger ./src"
+    "steiger": "steiger ./src",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "vue": "~3.5.43",
@@ -18,16 +20,18 @@
   },
   "devDependencies": {
     "@feature-sliced/steiger-plugin": "^0.7.0",
+    "@types/node": "^22.20.4",
     "@vitejs/plugin-vue": "^6.0.9",
     "@vue/eslint-config-typescript": "^14.9.0",
     "@vue/test-utils": "^2.5.1",
-    "@types/node": "^22.20.4",
     "@vue/tsconfig": "^0.9.1",
     "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.11.1",
     "globals": "^17.12.0",
     "jiti": "^2.7.0",
     "jsdom": "^30.1.1",
+    "prettier": "^3.9.9",
     "steiger": "^0.6.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.70.1",

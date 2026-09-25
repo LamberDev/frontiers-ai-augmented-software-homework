@@ -1,4 +1,5 @@
 import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
+import eslintConfigPrettier from 'eslint-config-prettier/flat'
 import pluginVue from 'eslint-plugin-vue'
 import globals from 'globals'
 
@@ -37,4 +38,6 @@ export default defineConfigWithVueTs(
       'vue/multi-word-component-names': 'off',
     },
   },
+  // Must stay last: disables stylistic rules that would conflict with Prettier.
+  eslintConfigPrettier,
 )
