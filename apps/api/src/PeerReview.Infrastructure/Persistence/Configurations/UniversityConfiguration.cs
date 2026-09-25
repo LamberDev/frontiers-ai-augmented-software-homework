@@ -15,8 +15,8 @@ public sealed class UniversityConfiguration : IEntityTypeConfiguration<Universit
             .IsRequired()
             .HasMaxLength(University.NameMaxLength);
 
-        builder.Property(university => university.Score)
-            .HasPrecision(5, 2);
+        // No HasPrecision: Score has no upper bound by design (confirmed decision), so it must
+        // not be constrained to a fixed precision/scale once a relational provider is used.
 
         // The InMemory provider does NOT enforce this unique index: the no-duplicates guarantee
         // for FrontiersOrganizationId comes from the get-or-create logic in the RegisterUser

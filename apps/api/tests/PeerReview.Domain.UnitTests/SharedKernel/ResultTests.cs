@@ -54,8 +54,25 @@ public class ResultTests
     }
 
     [Fact]
-    public void SuccessWithError_Throws()
+    public void FailureWithNullError_Throws()
     {
         Assert.Throws<InvalidOperationException>(() => Result.Failure<int>(null!));
+    }
+
+    [Fact]
+    public void SuccessWithError_Throws()
+    {
+        Assert.Throws<InvalidOperationException>(() => new TestResult(true, SampleError));
+    }
+
+    // Exposes the protected Result constructor so the "a successful result cannot carry an
+    // error" guard can be exercised directly; Result itself has no public API that reaches it,
+    // since Success()/Success<T>() never pass an error.
+    private sealed class TestResult : Result
+    {
+        public TestResult(bool isSuccess, Error? error)
+            : base(isSuccess, error)
+        {
+        }
     }
 }

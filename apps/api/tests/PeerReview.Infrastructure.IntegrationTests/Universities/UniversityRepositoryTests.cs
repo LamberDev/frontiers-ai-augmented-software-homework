@@ -46,4 +46,42 @@ public class UniversityRepositoryTests
 
         Assert.Null(found);
     }
+
+    [Fact]
+    public async Task GetByIdAsync_WithExistingUniversity_FindsItWithEqualValues()
+    {
+        var databaseName = Guid.NewGuid().ToString();
+        var university = University.Create(frontiersOrganizationId: 55, name: "Oxford", score: 91.25m).Value;
+
+        await using (var writeContext = new PeerReviewDbContext(CreateOptions(databaseName)))
+        {
+            var repository = new UniversityRepository(writeContext);
+            await repository.AddAsync(university, CancellationToken.None);
+            await writeContext.SaveChangesAsync(CancellationToken.None);
+        }
+
+        await using var readContext = new PeerReviewDbContext(CreateOptions(databaseName));
+        var readRepository = new UniversityRepository(readContext);
+
+        var found = await readRepository.GetByIdAsync(university.Id, CancellationToken.None);
+
+        Assert.NotNull(found);
+        Assert.Equal(university.Id, found!.Id);
+        Assert.Equal(university.FrontiersOrganizationId, found.FrontiersOrganizationId);
+        Assert.Equal(university.Name, found.Name);
+        Assert.Equal(university.Score, found.Score);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WithUnknownId_ReturnsNull()
+    {
+        var databaseName = Guid.NewGuid().ToString();
+
+        await using var readContext = new PeerReviewDbContext(CreateOptions(databaseName));
+        var repository = new UniversityRepository(readContext);
+
+        var found = await repository.GetByIdAsync(Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Null(found);
+    }
 }

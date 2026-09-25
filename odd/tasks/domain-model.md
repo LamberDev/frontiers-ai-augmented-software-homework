@@ -101,6 +101,55 @@ and persistence. This step builds those foundations without use cases, HTTP clie
     tests simple without `InternalsVisibleTo`. `AddInfrastructure()` is not called from
     `Program.cs` (out of scope per the feature document). Commit: `667f5ae`.
 
+- [x] T7 Review follow-ups (advisory findings of the approved RDD review, applied at user request):
+  R3-001 drop `HasPrecision(5, 2)` on `Score`; R3-002 fix misnamed `Result` guard test and cover the
+  success-with-error guard; R3-003 guard `ReviewerEligibility.Ineligible` against null/empty; R3-004
+  behavioral DI test (repository add + unit of work save + read in new scope); R3-005 test
+  `University` `GetByIdAsync` through a new context (found and not found). Route: delegated (writer
+  trigger, 5 files).
+  - Evidence:
+    - R3-001: RED with `dotnet test PeerReview.slnx -c Release`:
+      `UniversityConfigurationTests.Score_HasNoPrecisionOrScaleConstraint` failed — `Assert.Null()
+      Failure: Value of type 'Nullable<int>' has a value. Expected: null. Actual: 5`. Removed
+      `HasPrecision(5, 2)` from `UniversityConfiguration`. The round-trip test
+      (`SaveAndRetrieveUniversity_WithHighPrecisionScore_PersistsScoreUnchanged`, score
+      `12345.6789m`) already passed before the fix — InMemory ignores `HasPrecision` — stated as
+      such rather than faked as RED.
+    - R3-002: test-only change, no production bug. Renamed `SuccessWithError_Throws` (which
+      actually exercised `Result.Failure<int>(null!)`, i.e. failure-without-error) to
+      `FailureWithNullError_Throws`. Added a new `SuccessWithError_Throws` that calls the
+      protected `Result(bool, Error?)` constructor through a private nested `TestResult : Result`
+      to exercise the "a successful result cannot carry an error" guard directly; it passed
+      immediately since the guard already existed in `Result`'s constructor (no production
+      change).
+    - R3-003: RED with `dotnet test PeerReview.slnx -c Release`:
+      `ReviewerEligibilityTests.Ineligible_WithNullReasons_ThrowsArgumentNullException` and
+      `Ineligible_WithEmptyReasons_ThrowsArgumentException` both failed with `Assert.Throws()
+      Failure: No exception was thrown`. Added `ArgumentNullException.ThrowIfNull(reasons)` and
+      an `ArgumentException` for an empty list to `ReviewerEligibility.Ineligible`, mirroring
+      `ValidationError`'s guard style.
+    - R3-004: test-only change, no production bug. Rewrote `DependencyInjectionTests` to be
+      behavioral: one scope adds a `University` and a `User` through
+      `IUniversityRepository`/`IUserRepository` and saves through `IUnitOfWork.SaveChangesAsync`;
+      a new scope reads the user back through `IUserRepository.GetByIdAsync` with `University`
+      loaded. Overrides `AddInfrastructure()`'s fixed InMemory database name with a
+      `Guid.NewGuid()`-based one (registered after `AddInfrastructure()`, so it wins on
+      resolution) to stay isolated from other tests. Passed immediately — the DI wiring and
+      persistence path were already implemented in T6.
+    - R3-005: test-only change, no production bug. Added
+      `UniversityRepositoryTests.GetByIdAsync_WithExistingUniversity_FindsItWithEqualValues`
+      (round-trips through a new `PeerReviewDbContext`/`UniversityRepository`, asserts Id,
+      `FrontiersOrganizationId`, `Name`, `Score` equal — proves EF constructor binding for
+      `University`'s private constructor) and
+      `GetByIdAsync_WithUnknownId_ReturnsNull`. Both passed immediately — `Repository<TEntity,
+      TId>.GetByIdAsync` was already implemented in T6.
+    - GREEN (full suite): `dotnet test PeerReview.slnx -c Release`: 71 passed / 0 failed (62
+      `PeerReview.Domain.UnitTests`, up from 57 — `ResultTests` +1 net, `ReviewerEligibilityTests`
+      +4 new file; 9 `PeerReview.Infrastructure.IntegrationTests`, up from 5 —
+      `UniversityConfigurationTests` +2 new file, `UniversityRepositoryTests` +2).
+      `dotnet format whitespace|style PeerReview.slnx --verify-no-changes`: clean.
+      `dotnet build PeerReview.slnx -c Release`: 0 warnings / 0 errors.
+
 ## Acceptance criteria / checks (from `apps/api`)
 - `dotnet format whitespace|style PeerReview.slnx --verify-no-changes` clean.
 - `dotnet build PeerReview.slnx -c Release`: 0 errors, 0 warnings.
@@ -120,7 +169,6 @@ and persistence. This step builds those foundations without use cases, HTTP clie
 - T1-T6 done (commits `e333035`, `3c77609`, `7ba19a5`, `f3cf66a`, `f1017ad`, `667f5ae`).
   Final verification re-run by the orchestrator: format clean, build 0 warnings / 0 errors,
   tests 57 + 5 green, dependency rule OK.
-- Open follow-up: `UniversityConfiguration` sets `HasPrecision(5, 2)` on `Score`, which contradicts
-  the "no upper bound" decision (max 999.99, two decimals) once a relational provider is used;
-  InMemory ignores it. Pending user decision.
+- T7 done: all five review follow-ups (R3-001..R3-005) applied, see Evidence above. Full suite
+  71 passed / 0 failed, format clean, build 0 warnings / 0 errors.
 - Next: push / PR (user decision), then the RegisterUser use case.

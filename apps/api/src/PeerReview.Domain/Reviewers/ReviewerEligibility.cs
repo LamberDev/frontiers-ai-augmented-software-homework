@@ -13,5 +13,15 @@ public sealed class ReviewerEligibility
 
     public static ReviewerEligibility Eligible() => new(Array.Empty<IneligibilityReason>());
 
-    public static ReviewerEligibility Ineligible(IReadOnlyList<IneligibilityReason> reasons) => new(reasons);
+    public static ReviewerEligibility Ineligible(IReadOnlyList<IneligibilityReason> reasons)
+    {
+        ArgumentNullException.ThrowIfNull(reasons);
+
+        if (reasons.Count == 0)
+        {
+            throw new ArgumentException("Ineligible reviewer eligibility must contain at least one reason.", nameof(reasons));
+        }
+
+        return new(reasons);
+    }
 }
