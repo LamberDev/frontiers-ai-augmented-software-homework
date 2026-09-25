@@ -22,8 +22,8 @@ explicit, verifiable architecture.
 
 Pre-commit hooks are managed by [Lefthook](https://lefthook.dev) and installed automatically by
 running `pnpm install` at the repository root (the root `package.json` holds repository tooling
-only). Outside a git repository (or with `LEFTHOOK=0`) it skips hook installation instead of
-failing. The root install does not install app dependencies: the web checks also need
+only). Outside a git repository, without git installed, or with `LEFTHOOK=0` it skips hook
+installation instead of failing; other git errors still fail the install. The root install does not install app dependencies: the web checks also need
 `pnpm install` in `apps/web`, and the api check needs the .NET SDK.
 
 On each commit, only the staged files of each app are checked, in parallel:
