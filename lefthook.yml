@@ -14,10 +14,12 @@ pre-commit:
             glob: 'apps/web/**/*.{ts,vue,js}'
             run: pnpm exec eslint --fix {staged_files}
             stage_fixed: true
+            fail_text: 'Fix the ESLint errors above. If eslint was not found, run `pnpm install` in apps/web.'
           - name: prettier
             glob: 'apps/web/**/*.{ts,vue,js,css,json,md}'
             run: pnpm exec prettier --write {staged_files}
             stage_fixed: true
+            fail_text: 'Prettier failed. If prettier was not found, run `pnpm install` in apps/web.'
 
     # Only whitespace formatting runs here: `--folder` skips loading the MSBuild workspace
     # (~2 s per run instead of ~6 s against PeerReview.slnx; whitespace + style took ~17 s).

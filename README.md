@@ -22,7 +22,8 @@ explicit, verifiable architecture.
 
 Pre-commit hooks are managed by [Lefthook](https://lefthook.dev) and installed automatically by
 running `pnpm install` at the repository root (the root `package.json` holds repository tooling
-only). On each commit, only the staged files of each app are checked, in parallel:
+only). The root install does not install app dependencies: the web checks also need
+`pnpm install` in `apps/web`, and the api check needs the .NET SDK. On each commit, only the staged files of each app are checked, in parallel:
 
 - `apps/web`: `eslint --fix` then `prettier --write` (`*.{ts,vue,js}`); `prettier --write` for
   `*.{css,json,md}`. Unfixable ESLint errors fail the commit.
