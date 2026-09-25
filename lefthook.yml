@@ -33,3 +33,4 @@ pre-commit:
       glob: 'apps/api/**/*.cs'
       run: dotnet format whitespace --folder --include {staged_files}
       stage_fixed: true
+      fail_text: 'dotnet format failed. If dotnet was not found, install the .NET SDK 10 (see README).'
