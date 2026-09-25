@@ -99,8 +99,7 @@ and persistence. This step builds those foundations without use cases, HTTP clie
     `grep -rE "using PeerReview\.(Infrastructure|Api)|Microsoft\.EntityFrameworkCore" src/PeerReview.Domain src/PeerReview.Application --include=*.cs`
     empty. Repository base/concrete classes made `public` (not `internal`) to keep integration
     tests simple without `InternalsVisibleTo`. `AddInfrastructure()` is not called from
-    `Program.cs` (out of scope per the feature document). Commit: (recorded below, this is the
-    final task).
+    `Program.cs` (out of scope per the feature document). Commit: `667f5ae`.
 
 ## Acceptance criteria / checks (from `apps/api`)
 - `dotnet format whitespace|style PeerReview.slnx --verify-no-changes` clean.
@@ -110,7 +109,18 @@ and persistence. This step builds those foundations without use cases, HTTP clie
   has no EF Core; integration tests reference only Infrastructure; grep for Infrastructure/Api/EF
   usings in Domain/Application is empty.
 
+## Review (RDD)
+- Candidate `main..667f5ae` (47 files, 1435 lines), risk medium, one lens (`review-reliability`).
+  Consent granted; the first bound STATUS failed `pre_native` / `operation_timeout`
+  (`retry_safe: false`, `next_action: stop`). Reported as an occurrence on
+  Gentleman-Programming/gentle-ai#4655 (user consented); candidate then declined with the
+  captured decline invocation (`declined_this_candidate`). Outcome: unavailable, not approved.
+
 ## Progress
-- Branch created. T1 (SharedKernel), T2 (Universities), T3 (Users), T4 (Reviewers), T5
-  (Application persistence ports), T6 (Infrastructure) done. All tasks complete; running final
-  verification.
+- T1-T6 done (commits `e333035`, `3c77609`, `7ba19a5`, `f3cf66a`, `f1017ad`, `667f5ae`).
+  Final verification re-run by the orchestrator: format clean, build 0 warnings / 0 errors,
+  tests 57 + 5 green, dependency rule OK.
+- Open follow-up: `UniversityConfiguration` sets `HasPrecision(5, 2)` on `Score`, which contradicts
+  the "no upper bound" decision (max 999.99, two decimals) once a relational provider is used;
+  InMemory ignores it. Pending user decision.
+- Next: push / PR (user decision), then the RegisterUser use case.
