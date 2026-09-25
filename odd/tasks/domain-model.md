@@ -80,9 +80,27 @@ and persistence. This step builds those foundations without use cases, HTTP clie
 - [x] T5 Application persistence ports: `IRepository<TEntity,TId>`, `IUnitOfWork`, `IUserRepository`, `IUniversityRepository`. Route: delegated.
   - Evidence: interfaces only, no behaviour — no RED per spec. Verified by
     `dotnet build PeerReview.slnx -c Release`: 0 warnings / 0 errors. Full suite still green: 57
-    passed / 0 failed (unchanged by this task). `dotnet format` clean. Commit: (recorded in T6's
-    evidence).
-- [ ] T6 Infrastructure EF Core InMemory (DbContext, configurations, repositories, `AddInfrastructure()`), integration tests project, `AGENTS.md` Tests section. Route: delegated.
+    passed / 0 failed (unchanged by this task). `dotnet format` clean. Commit: `f1017ad` —
+    feat(application): add persistence ports for users and universities.
+- [x] T6 Infrastructure EF Core InMemory (DbContext, configurations, repositories, `AddInfrastructure()`), integration tests project, `AGENTS.md` Tests section. Route: delegated.
+  - Evidence: added `Microsoft.EntityFrameworkCore.InMemory` `10.0.12` (latest stable 10.0.x,
+    matching the existing `Microsoft.Extensions.DependencyInjection.Abstractions` pin) to
+    `Directory.Packages.props`. RED observed with
+    `dotnet test PeerReview.slnx -c Release --filter "FullyQualifiedName~PeerReview.Infrastructure.IntegrationTests"`:
+    4 failed / 1 passed — `UserRepository.GetByIdAsync` and
+    `UniversityRepository.GetByFrontiersOrganizationIdAsync` failed with
+    `System.NotImplementedException`, and the DI test failed with `InvalidOperationException: No
+    service for type 'IUserRepository' has been registered` (DI not yet wired); the
+    "two users share one University row" test passed unmodified since it does not exercise the
+    stubbed methods. GREEN: full suite 62 passed / 0 failed (57 Domain + 5
+    Infrastructure.IntegrationTests). `dotnet format` clean, `dotnet build -c Release`: 0 warnings
+    / 0 errors. Dependency rule verified: `dotnet list` reference/package per AGENTS.md all as
+    expected, and
+    `grep -rE "using PeerReview\.(Infrastructure|Api)|Microsoft\.EntityFrameworkCore" src/PeerReview.Domain src/PeerReview.Application --include=*.cs`
+    empty. Repository base/concrete classes made `public` (not `internal`) to keep integration
+    tests simple without `InternalsVisibleTo`. `AddInfrastructure()` is not called from
+    `Program.cs` (out of scope per the feature document). Commit: (recorded below, this is the
+    final task).
 
 ## Acceptance criteria / checks (from `apps/api`)
 - `dotnet format whitespace|style PeerReview.slnx --verify-no-changes` clean.
@@ -94,4 +112,5 @@ and persistence. This step builds those foundations without use cases, HTTP clie
 
 ## Progress
 - Branch created. T1 (SharedKernel), T2 (Universities), T3 (Users), T4 (Reviewers), T5
-  (Application persistence ports) done. Next: T6.
+  (Application persistence ports), T6 (Infrastructure) done. All tasks complete; running final
+  verification.
