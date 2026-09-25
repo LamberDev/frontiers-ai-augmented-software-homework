@@ -39,8 +39,8 @@ Slice names mirror the backend's business use cases/entities: `register-user`,
 
 ## Configuration
 
-- The backend base URL is read **only** through `shared/config` (`apiUrl`, backed by
-  `getApiUrl()` in `shared/config/apiUrl.ts`), which resolves `VITE_API_URL` and throws a
+- The backend base URL is read **only** through `shared/config` (`getApiUrl()` in
+  `shared/config/apiUrl.ts`), which resolves `VITE_API_URL` lazily on first use and throws a
   descriptive error if it's missing. Never read `import.meta.env.VITE_API_URL` directly outside
   `shared/config`.
 - Copy `.env.example` to `.env` and set `VITE_API_URL` before running `dev`/`test`.

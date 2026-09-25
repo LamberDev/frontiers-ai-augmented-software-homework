@@ -1,10 +1,7 @@
 :root {
-  color-scheme: light dark;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
+  /* Frontiers uses Nunito Sans (an open alternative to the licensed MuseoSans). */
+  --v-font-family: 'Nunito Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--v-font-family);
 }
 
 body {

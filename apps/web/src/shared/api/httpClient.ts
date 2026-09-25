@@ -1,4 +1,4 @@
-import { apiUrl } from '@/shared/config'
+import { getApiUrl } from '@/shared/config'
 
 /**
  * Minimal fetch-based HTTP client base.
@@ -8,5 +8,5 @@ import { apiUrl } from '@/shared/config'
  * business logic (that would violate the FSD rule that `shared` has none).
  */
 export function httpClient(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(new URL(path, apiUrl), init)
+  return fetch(new URL(path, getApiUrl()), init)
 }
