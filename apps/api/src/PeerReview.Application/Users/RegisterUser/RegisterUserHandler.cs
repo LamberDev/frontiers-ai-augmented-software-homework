@@ -41,12 +41,17 @@ public sealed class RegisterUserHandler
 
         var directoryEntry = directoryResult.Value;
 
-        var university = await _universityRepository.GetByFrontiersOrganizationIdAsync(
+        var existingUniversity = await _universityRepository.GetByFrontiersOrganizationIdAsync(
             directoryEntry.FrontiersOrganizationId,
             cancellationToken);
 
-        if (university is null)
+        var isNewUniversity = existingUniversity is null;
+        University university;
+
+        if (existingUniversity is null)
         {
+            // A new university is only staged together with a valid user: build and validate it
+            // here, but do not add it to the repository until the user also validates below.
             var universityResult = University.Create(
                 directoryEntry.FrontiersOrganizationId,
                 directoryEntry.Name,
@@ -54,11 +59,16 @@ public sealed class RegisterUserHandler
 
             if (universityResult.IsFailure)
             {
-                return Result.Failure<RegisteredUser>(universityResult.Error!);
+                // Invalid directory data (e.g. an empty name) is an upstream failure of the
+                // directory, not a client validation error.
+                return Result.Failure<RegisteredUser>(UniversityDirectoryErrors.InvalidEntry);
             }
 
             university = universityResult.Value;
-            await _universityRepository.AddAsync(university, cancellationToken);
+        }
+        else
+        {
+            university = existingUniversity;
         }
 
         var userResult = DomainUser.Create(command.UserName, command.NumberOfPublications, university);
@@ -69,6 +79,12 @@ public sealed class RegisterUserHandler
         }
 
         var user = userResult.Value;
+
+        if (isNewUniversity)
+        {
+            await _universityRepository.AddAsync(university, cancellationToken);
+        }
+
         await _userRepository.AddAsync(user, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

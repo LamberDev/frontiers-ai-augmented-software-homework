@@ -13,4 +13,9 @@ public static class UniversityDirectoryErrors
         "UniversityDirectory.Unavailable",
         "The university directory is currently unavailable.",
         ErrorType.Failure);
+
+    public static readonly Error InvalidEntry = new(
+        "UniversityDirectory.InvalidEntry",
+        "The university directory returned invalid data.",
+        ErrorType.Failure);
 }
