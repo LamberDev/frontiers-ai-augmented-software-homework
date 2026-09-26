@@ -25,8 +25,11 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   README (ids not enumerable, no user-count leak, known before persisting).
 - Contract and domain stay separate types: API request/response records live in `PeerReview.Api`;
   handlers return Application results, never domain entities over HTTP.
-- Frontiers lookup: `GET https://organizations-api.frontiersin.org/api/organizations/elasticsuggest?query=<UniversityName>&maxcount=1`
-  (exact path to be confirmed from the swagger in T2). Empty `organizationName` is rejected
+- Frontiers lookup: `GET https://organizations-api.frontiersin.org/v1/organizations/elasticSuggestions?query=<UniversityName>&maxcount=1`
+  (operation `Organization_ElasticSuggest`, verified from `swagger/docs/1.0` on 2026-09-25). The
+  search is fuzzy: a nonsense query still returns a (low-score) match, e.g.
+  `zzqqxxnotauniversity` -> "University Hospital Frankfurt", score 3.74; "Harvard University"
+  -> id 1327079645, score 94.36. Only an empty array means not found. Empty `organizationName` is rejected
   (never falls back to `matchedName`); no result is a NotFound error; transport/HTTP failures are
   a `Failure` error.
 - University get-or-create by `FrontiersOrganizationId` in the `RegisterUser` handler (InMemory
@@ -49,7 +52,7 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   `../frontiers-ai-augmented-software-homework-worktrees/use-cases` (no upstream set).
 - Strategy: ask-on-risk. Forecast ~1200 authored lines (> 400). Chain strategy (user choice,
   2026-09-25): `stacked-to-main`, one PR per work unit stacked on the previous one, all targeting
-  `main`. Slice boundaries are the task commits; recorded here as PRs are opened. Running count: ~462 (T1) + ~87 (T1b).
+  `main`. Slice boundaries are the task commits; recorded here as PRs are opened. Running count: ~462 (T1) + ~87 (T1b) + ~380 (T2).
 
 ## Tasks
 - [x] T1 `RegisterUser` use case (Application): `IUniversityDirectory` port and its lookup result,
@@ -84,6 +87,8 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
     reuse-path assertions passed immediately (test strengthening). GREEN: 81 passed / 0 failed
     (62 + 10 + 9), re-run by the parent. Format clean, build 0 warnings / 0 errors, dependency
     rule OK. No new domain type: the rule is the handler's build-then-stage order.
+  - Commit (user consented): `1c47f76`. RDD assess (base `56c2d5d`): medium, `review_due=false`,
+    `under_budget` (97 lines): pending in the slice until a later commit reaches the budget.
   - R3 university-before-user: business rule "a new university is only staged together with a
     valid user". Build and validate the `University` and the `User` first, then add both;
     nothing is added to any repository when any validation fails. Test the new-university path
@@ -94,9 +99,20 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   - R3 query-name: assert the directory is queried with the command's `UniversityName`.
   - R3 reuse-path: assert exactly one user added and `UserId` matches the persisted user.
   - R3 get-or-create race: accepted limitation (single-instance InMemory), documented in T6.
-- [ ] T2 Frontiers adapter (Infrastructure): typed `HttpClient` (base URL + timeout via options),
+- [x] T2 Frontiers adapter (Infrastructure): typed `HttpClient` (base URL + timeout via options),
   response DTO, anti-corruption mapping to the port result, NotFound/Failure handling; tests with a
-  fake `HttpMessageHandler`; register in `AddInfrastructure()`.
+  fake `HttpMessageHandler`; register in `AddInfrastructure()`. Route: delegated (writer, 2+ files).
+  - Evidence: RED with `dotnet test PeerReview.slnx -c Release`: Infrastructure 11 failed / 10
+    passed, the 11 new adapter tests failing with `System.NotImplementedException` from
+    `FrontiersUniversityDirectory.FindByNameAsync`. GREEN: 93 passed / 0 failed (62 + 10 + 21),
+    re-run by the parent. Format clean, build 0 warnings / 0 errors, dependency rule OK.
+  - `AddInfrastructure(IConfiguration)` now binds `FrontiersOrganizations` (`BaseAddress`,
+    `Timeout` 10 s) from `appsettings.json`; `Program.cs` updated. Packages (10.0.12):
+    `Microsoft.Extensions.Http`, `Microsoft.Extensions.Options.ConfigurationExtensions`
+    (Infrastructure), `Microsoft.Extensions.Configuration` (integration tests only).
+  - Parent correction: the writer's DI test read the private `_httpClient` field by reflection;
+    replaced by a behavioral test that swaps the primary handler for a fake and asserts the
+    request goes to the configured base address (test strengthening, passed immediately).
 - [ ] T3 `InviteReviewer` use case (Application): `InviteReviewerCommand(Guid UserId)`, handler
   loading the user with university, applying `ReviewerEligibilityPolicy`, returning invited flag,
   message and reasons; NotFound for unknown user; tests with fakes.
@@ -118,4 +134,5 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   usings in Domain/Application).
 
 ## Progress
-- T1 done, committed and reviewed (approved). T1b done (commit pending user consent). Next: T2.
+- T1 done, committed and reviewed (approved). T1b committed (`1c47f76`). T2 done (commit pending
+  user consent). Next: T3.
