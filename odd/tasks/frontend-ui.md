@@ -346,7 +346,7 @@ but no UI kit, theme or real components.
   `ResultAlert` redesigned stateless — visible == mounted, one instance per result, parent owns
   the list, no reopen logic; `GlassButton`'s `'flat'` fallback restored with per-variant tests).
   All checks green (`pnpm test` 12 files/73 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`,
-  `pnpm format:check`). Commit pending user consent.
+  `pnpm format:check`). Committed as `72c3233`.
 
 ## Next step
 T2.3 is implemented and verified; awaiting user consent to commit. Then T3 (`GlassShell` layout
