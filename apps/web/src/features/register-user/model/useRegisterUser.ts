@@ -80,11 +80,15 @@ export function useRegisterUser(options: UseRegisterUserOptions = {}) {
     if (status.value === 'loading') return
 
     status.value = 'loading'
+    // Reset on every submit attempt (the simplest deterministic rule — see
+    // `odd/tasks/frontend-ui.md`, T7.1): a stale field error, or a stale
+    // "highlighted fields" result, from a previous failed submission must
+    // never survive into a new one that fails for an unrelated reason.
+    fieldErrors.value = {}
 
     try {
       const user = await apiCall(input)
       lastUser.value = user
-      fieldErrors.value = {}
       status.value = 'success'
       results.value = [
         ...results.value,
@@ -98,8 +102,17 @@ export function useRegisterUser(options: UseRegisterUserOptions = {}) {
     } catch (error) {
       status.value = 'error'
 
-      if (error instanceof ApiError && Object.keys(error.fieldErrors).length > 0) {
-        fieldErrors.value = toRegisterUserFieldErrors(error.fieldErrors)
+      const narrowedFieldErrors =
+        error instanceof ApiError ? toRegisterUserFieldErrors(error.fieldErrors) : {}
+
+      // Only the "highlighted fields" message is shown, and only fields
+      // that survive narrowing to this form's known fields are highlighted:
+      // a server `fieldErrors` payload that names only unrecognized keys
+      // (e.g. an unrelated/unexpected server key) falls through to the
+      // code/default message below instead of pointing at fields that were
+      // never actually flagged.
+      if (Object.keys(narrowedFieldErrors).length > 0) {
+        fieldErrors.value = narrowedFieldErrors
         results.value = [
           ...results.value,
           {

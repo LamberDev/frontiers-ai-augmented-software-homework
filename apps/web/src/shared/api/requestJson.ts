@@ -1,6 +1,11 @@
 import { getApiUrl } from '@/shared/config'
 import { httpClient } from './httpClient'
-import { ApiError, MISSING_API_URL_CODE, NETWORK_UNAVAILABLE_CODE } from './ApiError'
+import {
+  ApiError,
+  MISSING_API_URL_CODE,
+  NETWORK_UNAVAILABLE_CODE,
+  RESPONSE_INVALID_BODY_CODE,
+} from './ApiError'
 
 export interface RequestJsonInit {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
@@ -11,11 +16,38 @@ interface ProblemDetailsBody {
   code?: string
   title?: string
   detail?: string
-  errors?: Record<string, string[]>
+  errors?: unknown
 }
 
+// An array is technically `typeof value === 'object'`, but it is never a
+// valid RFC 9457 problem body (which is always a JSON object of named
+// fields) — without this, a bare array response would be treated as an
+// object with all-`undefined` fields instead of "no usable problem body".
 function isProblemDetailsBody(value: unknown): value is ProblemDetailsBody {
-  return typeof value === 'object' && value !== null
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string')
+}
+
+/**
+ * Keeps only the `errors` dictionary's entries whose value is actually an
+ * array of strings (the RFC 9457 validation-problem shape this app expects
+ * per field), dropping any entry a server might send with an unexpected
+ * shape (a non-array value, or an array containing a non-string) instead of
+ * passing it through untyped as a field's "error messages".
+ */
+function normalizeFieldErrors(errors: unknown): Record<string, string[]> {
+  if (typeof errors !== 'object' || errors === null || Array.isArray(errors)) return {}
+
+  const result: Record<string, string[]> = {}
+  for (const [field, messages] of Object.entries(errors as Record<string, unknown>)) {
+    if (isStringArray(messages)) {
+      result[field] = messages
+    }
+  }
+  return result
 }
 
 /**
@@ -73,9 +105,23 @@ export async function requestJson<T>(path: string, init: RequestJsonInit): Promi
       code: body.code,
       title: body.title,
       detail: body.detail,
-      fieldErrors: body.errors ?? {},
+      fieldErrors: normalizeFieldErrors(body.errors),
     })
   }
 
-  return (await response.json()) as T
+  try {
+    return (await response.json()) as T
+  } catch (cause) {
+    // A 2xx response is not a guarantee of a parsable JSON body (e.g. an
+    // empty 204, or a misconfigured/broken server sending non-JSON on
+    // "success"). Without this, `response.json()` would throw a raw
+    // `SyntaxError` instead of the `ApiError` every other failure mode
+    // rejects with, breaking the "one uniform catch" contract this helper
+    // exists for (see the module doc comment above).
+    throw new ApiError({
+      status: response.status,
+      code: RESPONSE_INVALID_BODY_CODE,
+      detail: cause instanceof Error ? cause.message : undefined,
+    })
+  }
 }

@@ -13,6 +13,17 @@ export const NETWORK_UNAVAILABLE_CODE = 'Network.Unavailable'
  */
 export const MISSING_API_URL_CODE = 'Config.MissingApiUrl'
 
+/**
+ * Thrown for a successful (2xx) response whose body cannot be trusted: an
+ * empty/non-JSON body where JSON was expected (`requestJson`, `./requestJson.ts`),
+ * or a JSON body that parses but does not match the expected shape (e.g.
+ * `inviteReviewer`'s own structural check, `features/invite-reviewer/api/inviteReviewer.ts`).
+ * Keeps a malformed-but-"successful" response from reaching application code
+ * as untyped data by surfacing it through the same `ApiError` channel as
+ * every other failure.
+ */
+export const RESPONSE_INVALID_BODY_CODE = 'Response.InvalidBody'
+
 export interface ApiErrorOptions {
   status: number
   code?: string

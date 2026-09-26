@@ -222,4 +222,109 @@ describe('Given the shared/api requestJson helper', () => {
       })
     })
   })
+
+  describe('When the error response body is a JSON array (not a problem object)', () => {
+    it('Then it rejects with an ApiError carrying just the status, treating the body as absent', async () => {
+      // Arrange
+      vi.stubEnv('VITE_API_URL', 'https://api.example.test')
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(['not', 'a', 'problem', 'object']), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      const { requestJson } = await import('./requestJson')
+      const { ApiError } = await import('./ApiError')
+
+      // Act
+      const call = requestJson('/api/users', { method: 'POST', body: {} })
+
+      // Assert
+      await expect(call).rejects.toBeInstanceOf(ApiError)
+      await call.catch((error: InstanceType<typeof ApiError>) => {
+        expect(error.status).toBe(400)
+        expect(error.code).toBeUndefined()
+        expect(error.fieldErrors).toEqual({})
+      })
+    })
+  })
+
+  describe('When the "errors" dictionary mixes valid and invalid entries', () => {
+    it('Then it keeps only entries whose value is an array of strings', async () => {
+      // Arrange
+      vi.stubEnv('VITE_API_URL', 'https://api.example.test')
+      const problem = {
+        code: 'Request.InvalidBody',
+        errors: {
+          universityName: ['University name is required.'],
+          numberOfPublications: 'not an array',
+          userName: [1, 2, 3],
+          mixed: ['ok', 2],
+        },
+      }
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(problem), {
+          status: 400,
+          headers: { 'Content-Type': 'application/problem+json' },
+        }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      const { requestJson } = await import('./requestJson')
+      const { ApiError } = await import('./ApiError')
+
+      // Act
+      const call = requestJson('/api/users', { method: 'POST', body: {} })
+
+      // Assert
+      await expect(call).rejects.toBeInstanceOf(ApiError)
+      await call.catch((error: InstanceType<typeof ApiError>) => {
+        expect(error.fieldErrors).toEqual({
+          universityName: ['University name is required.'],
+        })
+      })
+    })
+  })
+
+  describe('When a successful (2xx) response has an empty body', () => {
+    it('Then it rejects with an ApiError carrying the status and the invalid-body code, instead of throwing a raw SyntaxError', async () => {
+      // Arrange
+      vi.stubEnv('VITE_API_URL', 'https://api.example.test')
+      const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+      vi.stubGlobal('fetch', fetchMock)
+      const { requestJson } = await import('./requestJson')
+      const { ApiError, RESPONSE_INVALID_BODY_CODE } = await import('./ApiError')
+
+      // Act
+      const call = requestJson('/api/users', { method: 'POST', body: {} })
+
+      // Assert
+      await expect(call).rejects.toBeInstanceOf(ApiError)
+      await call.catch((error: InstanceType<typeof ApiError>) => {
+        expect(error.status).toBe(204)
+        expect(error.code).toBe(RESPONSE_INVALID_BODY_CODE)
+      })
+    })
+  })
+
+  describe('When a successful (2xx) response has a non-JSON body', () => {
+    it('Then it rejects with an ApiError carrying the status and the invalid-body code', async () => {
+      // Arrange
+      vi.stubEnv('VITE_API_URL', 'https://api.example.test')
+      const fetchMock = vi.fn().mockResolvedValue(new Response('not json', { status: 200 }))
+      vi.stubGlobal('fetch', fetchMock)
+      const { requestJson } = await import('./requestJson')
+      const { ApiError, RESPONSE_INVALID_BODY_CODE } = await import('./ApiError')
+
+      // Act
+      const call = requestJson('/api/users', { method: 'POST', body: {} })
+
+      // Assert
+      await expect(call).rejects.toBeInstanceOf(ApiError)
+      await call.catch((error: InstanceType<typeof ApiError>) => {
+        expect(error.status).toBe(200)
+        expect(error.code).toBe(RESPONSE_INVALID_BODY_CODE)
+      })
+    })
+  })
 })

@@ -166,6 +166,56 @@ describe('Given useRegisterUser', () => {
     })
   })
 
+  describe('When submit fails with server field errors, then a later submit fails with a non-field error', () => {
+    it('Then the stale field errors and highlighted fields are cleared', async () => {
+      // Arrange
+      const registerUser = vi
+        .fn()
+        .mockRejectedValueOnce(
+          new ApiError({
+            status: 400,
+            code: 'RegisterUser.UniversityNameRequired',
+            fieldErrors: { universityName: ['University name is required.'] },
+          }),
+        )
+        .mockRejectedValueOnce(new ApiError({ status: 0, code: 'Network.Unavailable' }))
+      const { fieldErrors, submit } = useRegisterUser({ registerUser })
+
+      // Act
+      await submit(input)
+      expect(fieldErrors.value).toEqual({ universityName: ['University name is required.'] })
+      await submit(input)
+
+      // Assert
+      expect(fieldErrors.value).toEqual({})
+    })
+  })
+
+  describe('When submit fails with only unknown field error keys', () => {
+    it('Then it falls back to a generic message and highlights nothing', async () => {
+      // Arrange
+      const registerUser = vi.fn().mockRejectedValue(
+        new ApiError({
+          status: 400,
+          code: 'Request.InvalidBody',
+          fieldErrors: { unknownField: ['x'] },
+        }),
+      )
+      const { fieldErrors, results, submit } = useRegisterUser({ registerUser })
+
+      // Act
+      await submit(input)
+
+      // Assert
+      expect(fieldErrors.value).toEqual({})
+      expect(results.value[0].title).not.toBe('Please fix the highlighted fields.')
+      expect(results.value[0]).toMatchObject({
+        type: 'error',
+        title: 'Something went wrong. Please try again.',
+      })
+    })
+  })
+
   describe('When dismiss is called with a result id', () => {
     it('Then it removes only that result', async () => {
       // Arrange

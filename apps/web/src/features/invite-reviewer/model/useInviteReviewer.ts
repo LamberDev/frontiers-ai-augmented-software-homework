@@ -89,29 +89,46 @@ export function useInviteReviewer(options: UseInviteReviewerOptions = {}) {
     if (status.value === 'loading') return
 
     status.value = 'loading'
+    // Reset on every submit attempt (mirrors
+    // `register-user/model/useRegisterUser.ts`'s `submit`): a stale field
+    // error must never survive into a new submission that fails for an
+    // unrelated reason.
+    fieldErrors.value = {}
 
     try {
+      // `apiCall` (the `inviteReviewer` api function) is the one place that
+      // validates/normalizes the raw response into an `InvitationResult`
+      // (see `features/invite-reviewer/api/inviteReviewer.ts`) — it either
+      // resolves with a fully-formed result or rejects, so building the
+      // result entry from `invitation` below can never observe a
+      // half-parsed value. `lastInvitation`/`status`/`results` are only
+      // ever assigned together, after that result is fully known — never
+      // partially, mid-processing.
       const invitation = await apiCall(input)
+      const entry: ResultAlertEntry = {
+        id: createResultId(),
+        type: resultTypeForInvited(invitation.invited),
+        title: invitation.invited ? 'Invitation sent' : 'Reviewer not invited',
+        message: invitation.message,
+        items: invitation.reasons.length
+          ? invitation.reasons.map((reason) => reason.message)
+          : undefined,
+      }
       lastInvitation.value = invitation
-      fieldErrors.value = {}
       status.value = 'success'
-      results.value = [
-        ...results.value,
-        {
-          id: createResultId(),
-          type: resultTypeForInvited(invitation.invited),
-          title: invitation.invited ? 'Invitation sent' : 'Reviewer not invited',
-          message: invitation.message,
-          items: invitation.reasons.length
-            ? invitation.reasons.map((reason) => reason.message)
-            : undefined,
-        },
-      ]
+      results.value = [...results.value, entry]
     } catch (error) {
       status.value = 'error'
 
-      if (error instanceof ApiError && Object.keys(error.fieldErrors).length > 0) {
-        fieldErrors.value = toInviteReviewerFieldErrors(error.fieldErrors)
+      const narrowedFieldErrors =
+        error instanceof ApiError ? toInviteReviewerFieldErrors(error.fieldErrors) : {}
+
+      // Only highlight fields that survive narrowing to this form's known
+      // fields; a server `fieldErrors` payload naming only unrecognized
+      // keys falls through to the code/default message below (mirrors
+      // `useRegisterUser.ts`).
+      if (Object.keys(narrowedFieldErrors).length > 0) {
+        fieldErrors.value = narrowedFieldErrors
         results.value = [
           ...results.value,
           {
