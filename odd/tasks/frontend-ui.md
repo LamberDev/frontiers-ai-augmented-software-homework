@@ -368,7 +368,11 @@ but no UI kit, theme or real components.
       `pnpm format:check` PASS.
     - Size: ~334 authored changed lines (93 insertions/deletions across 4 modified files + 241
       lines across 4 new files), under the ~400-line planning heuristic.
-  - Commit: `feat(web): add glass shell layout and navigation header` (first commit on feat/frontend-ui-shell).
+  - Commit: `3c8f7d8` — feat(web): add glass shell layout and navigation header. RDD assess from
+    `5237d05` (covers 72c3233, 5c28e6a, 3c8f7d8): medium, 911 lines, review granted, but the bound
+    STATUS after START timed out twice (`operation_timeout`, `pre_native`, Gentle AI defect,
+    occurrence added to gentle-ai#4655 with user consent); candidate declined via the provider
+    decline invocation. Outcome: unavailable → declined; no review receipt for this range.
   - Parent spot check (2026-09-26): the writer had re-exported the test-only `mountWithVuetify`
     from `shared/lib/index.ts` to satisfy steiger; that would let production imports of
     `@/shared/lib` pull `@vue/test-utils` and the global `ResizeObserver` stub into the bundle.
@@ -425,9 +429,10 @@ but no UI kit, theme or real components.
 - 2026-09-26: T3 implemented and verified (`GlassShell` template widget — gradient background,
   blurred blobs, `header`/default slots, centered container — plus `AppHeader` reworked into a
   glass nav bar with `BrandLogo` and data-driven Register/Invite links; `App.vue` composed with
-  `GlassShell`; `shared/lib` now re-exports `mountWithVuetify` for cross-layer test imports). All
-  checks green (`pnpm test` 14 files/80 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`,
-  `pnpm format:check`). Commit pending user consent.
+  `GlassShell`; test helper later moved to `apps/web/test/support` behind `@test`). All checks
+  green (`pnpm test` 14 files/80 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`,
+  `pnpm format:check`). Committed as `3c8f7d8`; review unavailable (Gentle AI timeout) and
+  declined for that candidate.
 
 ## Next step
 T3 is implemented and verified; awaiting user consent to commit. Then T4 (`RegisterUserForm` and
