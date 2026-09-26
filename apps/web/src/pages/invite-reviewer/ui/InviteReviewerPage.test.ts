@@ -43,8 +43,9 @@ describe('Given InviteReviewerPage', () => {
       const wrapper = await mountPage('/invite')
 
       // Assert
-      expect(wrapper.findAll('h1')).toHaveLength(1)
-      expect(wrapper.text()).toContain('Invite reviewer')
+      const headings = wrapper.findAll('h1')
+      expect(headings).toHaveLength(1)
+      expect(headings[0].text()).toBe('Invite a reviewer')
       expect((findFieldInput(wrapper, 'User id').element as HTMLInputElement).value).toBe('')
     })
   })
@@ -86,8 +87,10 @@ describe('Given InviteReviewerPage', () => {
       await flushPromises()
 
       // Assert
-      expect(wrapper.text()).toContain('Invitation sent')
-      expect(wrapper.text()).toContain('Reviewer invited.')
+      const alert = wrapper.find('.result-alert')
+      expect(alert.classes()).toContain('bg-success')
+      expect(alert.text()).toContain('Invitation sent')
+      expect(alert.text()).toContain('Reviewer invited.')
     })
   })
 
@@ -97,7 +100,7 @@ describe('Given InviteReviewerPage', () => {
       const invitation: InvitationResult = {
         userId,
         invited: false,
-        message: 'Reviewer not invited.',
+        message: 'The request completed.',
         reasons: [{ code: 'University.ScoreTooLow', message: 'University score is too low.' }],
       }
       inviteReviewerMock.mockResolvedValueOnce(invitation)
@@ -108,8 +111,11 @@ describe('Given InviteReviewerPage', () => {
       await flushPromises()
 
       // Assert
-      expect(wrapper.find('[role="alert"]').exists()).toBe(true)
-      expect(wrapper.text()).toContain('University score is too low.')
+      const alert = wrapper.find('.result-alert')
+      expect(alert.attributes('role')).toBe('alert')
+      expect(alert.classes()).toContain('bg-warning')
+      expect(alert.text()).toContain('Reviewer not invited')
+      expect(alert.text()).toContain('University score is too low.')
     })
   })
 

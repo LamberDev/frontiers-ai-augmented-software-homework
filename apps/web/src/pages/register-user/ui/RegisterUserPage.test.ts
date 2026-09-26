@@ -64,8 +64,9 @@ describe('Given RegisterUserPage', () => {
       const { wrapper } = await mountPage()
 
       // Assert
-      expect(wrapper.findAll('h1')).toHaveLength(1)
-      expect(wrapper.text()).toContain('Register user')
+      const headings = wrapper.findAll('h1')
+      expect(headings).toHaveLength(1)
+      expect(headings[0].text()).toBe('Register a user')
       expect(wrapper.find('[aria-label="Results"]').exists()).toBe(true)
     })
   })

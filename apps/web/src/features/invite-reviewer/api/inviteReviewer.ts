@@ -14,6 +14,8 @@ function isInvitationResult(value: unknown): value is InvitationResult {
   if (typeof value !== 'object' || value === null) return false
   const candidate = value as Record<string, unknown>
   return (
+    typeof candidate.userId === 'string' &&
+    candidate.userId.length > 0 &&
     typeof candidate.invited === 'boolean' &&
     typeof candidate.message === 'string' &&
     Array.isArray(candidate.reasons) &&
