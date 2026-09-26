@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
  * Composes `GlassTextField` with consistent field spacing, passing
- * `v-model` through. Only the first error message is shown at a time,
- * keeping the field compact even when a caller has several validation
- * messages queued for the same field.
+ * `v-model` through as-is (including `GlassTextField`'s numeric model
+ * contract when `type="number"` — see its own doc comment). Only the first
+ * error message is shown at a time, keeping the field compact even when a
+ * caller has several validation messages queued for the same field.
  */
 import { computed, useId } from 'vue'
 import GlassTextField from '@/shared/ui/atoms/GlassTextField/GlassTextField.vue'
@@ -34,7 +35,7 @@ const props = withDefaults(
   },
 )
 
-const model = defineModel<string | number>()
+const model = defineModel<string | number | null>()
 
 const generatedId = useId()
 const fieldId = computed(() => props.id ?? generatedId)

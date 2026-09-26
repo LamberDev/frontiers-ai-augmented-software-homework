@@ -2,9 +2,15 @@
 /**
  * Glass surface container (molecule): a translucent `.glass-surface` card
  * with an optional heading/subtitle and `actions` slot. Renders as a
- * `section` by default; `as` picks a different semantic tag. When titled
- * through the `title` prop (not the `title` slot override), the root is
- * `aria-labelledby` the generated heading id.
+ * `section` by default; `as` picks a different semantic tag. Whenever a
+ * heading is rendered — the default `title` prop rendering, or a caller's
+ * `title` slot override — it is wrapped in an element carrying the
+ * generated id, and the root is always `aria-labelledby` that id, so the
+ * accessible name keeps pointing at whatever is visually the heading.
+ *
+ * `elevation` (0-3, clamped, non-finite values ignored) is observable: it
+ * sets a `glass-card--elevation-{n}` class that maps to an increasing
+ * `box-shadow` strength (see the style block below).
  */
 import { computed, useId, useSlots } from 'vue'
 
@@ -26,24 +32,34 @@ const props = withDefaults(
 const slots = useSlots()
 
 const headingId = useId()
-// Auto aria-labelledby only applies to the default `title` prop rendering:
-// a caller overriding the `title` slot owns their own heading and labeling.
-const hasAutoHeading = computed(() => !slots.title && !!props.title)
 const hasHeader = computed(() => !!slots.title || !!props.title)
+
+const elevationLevel = computed(() => {
+  if (props.elevation === undefined) return undefined
+  const numeric = Number(props.elevation)
+  if (!Number.isFinite(numeric)) return undefined
+  return Math.min(3, Math.max(0, Math.round(numeric)))
+})
+
+const elevationClass = computed(() =>
+  elevationLevel.value !== undefined ? `glass-card--elevation-${elevationLevel.value}` : undefined,
+)
 </script>
 
 <template>
   <component
     :is="as"
     class="glass-card glass-surface"
-    :aria-labelledby="hasAutoHeading ? headingId : undefined"
-    :style="elevation !== undefined ? { '--glass-card-elevation': String(elevation) } : undefined"
+    :class="elevationClass"
+    :aria-labelledby="hasHeader ? headingId : undefined"
   >
     <div v-if="hasHeader" class="glass-card__header">
-      <slot name="title">
-        <h2 :id="headingId" class="glass-card__title">{{ title }}</h2>
-      </slot>
-      <p v-if="subtitle && !slots.title" class="glass-card__subtitle">{{ subtitle }}</p>
+      <div :id="headingId" class="glass-card__title-slot">
+        <slot name="title">
+          <h2 class="glass-card__title">{{ title }}</h2>
+        </slot>
+      </div>
+      <p v-if="subtitle" class="glass-card__subtitle">{{ subtitle }}</p>
     </div>
     <div class="glass-card__content">
       <slot />
@@ -57,6 +73,22 @@ const hasHeader = computed(() => !!slots.title || !!props.title)
 <style scoped>
 .glass-card {
   padding: 1.5rem;
+}
+
+.glass-card--elevation-0 {
+  box-shadow: none;
+}
+
+.glass-card--elevation-1 {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.glass-card--elevation-2 {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+}
+
+.glass-card--elevation-3 {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
 }
 
 .glass-card__header {

@@ -70,4 +70,73 @@ describe('Given GlassCard', () => {
       expect(wrapper.element.hasAttribute('aria-labelledby')).toBe(false)
     })
   })
+
+  describe('When a title slot override is provided', () => {
+    it('Then the header is rendered and aria-labelledby points at the visible heading', () => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(GlassCard, {
+        slots: { title: '<h3>Custom heading</h3>', default: 'Body content' },
+      })
+
+      // Assert
+      const labelledBy = wrapper.element.getAttribute('aria-labelledby')
+      expect(labelledBy).toBeTruthy()
+      const heading = wrapper.find(`#${labelledBy}`)
+      expect(heading.exists()).toBe(true)
+      expect(heading.text()).toBe('Custom heading')
+    })
+  })
+
+  describe('When both a title slot override and a subtitle are provided', () => {
+    it('Then the subtitle is still rendered', () => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(GlassCard, {
+        props: { subtitle: 'Eligibility outcome' },
+        slots: { title: '<h3>Custom heading</h3>' },
+      })
+
+      // Assert
+      expect(wrapper.text()).toContain('Eligibility outcome')
+    })
+  })
+
+  describe('When elevation is set to an in-range value', () => {
+    it('Then it applies the matching elevation class', () => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(GlassCard, { props: { elevation: 2 } })
+
+      // Assert
+      expect(wrapper.classes()).toContain('glass-card--elevation-2')
+    })
+  })
+
+  describe('When elevation is above the supported range', () => {
+    it('Then it clamps to the highest elevation class', () => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(GlassCard, { props: { elevation: 10 } })
+
+      // Assert
+      expect(wrapper.classes()).toContain('glass-card--elevation-3')
+    })
+  })
+
+  describe('When elevation is below the supported range', () => {
+    it('Then it clamps to the lowest elevation class', () => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(GlassCard, { props: { elevation: -1 } })
+
+      // Assert
+      expect(wrapper.classes()).toContain('glass-card--elevation-0')
+    })
+  })
+
+  describe('When elevation is not set', () => {
+    it('Then it applies no elevation class', () => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(GlassCard, { props: {} })
+
+      // Assert
+      expect(wrapper.classes().some((cls) => cls.startsWith('glass-card--elevation-'))).toBe(false)
+    })
+  })
 })

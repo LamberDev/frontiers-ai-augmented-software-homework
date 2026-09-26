@@ -32,16 +32,15 @@ const emit = defineEmits<{
   click: [event: MouseEvent]
 }>()
 
-const vuetifyVariant = computed(() => {
-  switch (props.variant) {
-    case 'secondary':
-      return 'outlined'
-    case 'ghost':
-      return 'text'
-    default:
-      return 'flat'
-  }
-})
+type ButtonVariant = NonNullable<typeof props.variant>
+
+const vuetifyVariantByVariant = {
+  primary: 'flat',
+  secondary: 'outlined',
+  ghost: 'text',
+} as const satisfies Record<ButtonVariant, VBtn['$props']['variant']>
+
+const vuetifyVariant = computed(() => vuetifyVariantByVariant[props.variant])
 
 const isDisabled = computed(() => props.disabled || props.loading)
 

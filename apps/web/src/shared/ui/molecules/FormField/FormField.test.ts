@@ -50,6 +50,21 @@ describe('Given FormField', () => {
     })
   })
 
+  describe('When type is "number"', () => {
+    it("Then it proxies GlassTextField's numeric model and emits a number", async () => {
+      // Arrange
+      const wrapper = mountWithVuetify(FormField, {
+        props: { label: 'Publications', type: 'number', modelValue: 0 },
+      })
+
+      // Act
+      await wrapper.find('input').setValue('12')
+
+      // Assert
+      expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([12])
+    })
+  })
+
   describe('When a hint is provided and there are no errors', () => {
     it('Then the hint text is rendered', () => {
       // Arrange / Act

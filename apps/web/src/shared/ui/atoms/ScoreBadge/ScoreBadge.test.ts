@@ -67,6 +67,40 @@ describe('Given ScoreBadge', () => {
     })
   })
 
+  describe('When score is NaN', () => {
+    it('Then it renders "Unknown", a neutral color and an accessible label saying "Unknown"', () => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(ScoreBadge, { props: { score: NaN, threshold: 70 } })
+
+      // Assert
+      expect(wrapper.text()).toContain('Unknown')
+      expect(wrapper.attributes('aria-label')).toContain('Unknown')
+      const classes = wrapper.classes().join(' ')
+      expect(classes).not.toContain('success')
+      expect(classes).not.toContain('error')
+    })
+  })
+
+  describe('When score is Infinity', () => {
+    it('Then it renders "Unknown"', () => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(ScoreBadge, { props: { score: Infinity } })
+
+      // Assert
+      expect(wrapper.text()).toContain('Unknown')
+    })
+  })
+
+  describe('When score is -Infinity', () => {
+    it('Then it renders "Unknown"', () => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(ScoreBadge, { props: { score: -Infinity } })
+
+      // Assert
+      expect(wrapper.text()).toContain('Unknown')
+    })
+  })
+
   describe('When a custom label is provided', () => {
     it('Then the accessible label uses it instead of the generic default', () => {
       // Arrange / Act

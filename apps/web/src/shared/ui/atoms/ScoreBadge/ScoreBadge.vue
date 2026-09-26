@@ -21,12 +21,26 @@ const props = withDefaults(
   },
 )
 
-const isUnknown = computed(() => props.score === null || props.score === undefined)
+// Treat non-finite numbers (NaN, +/-Infinity) as unknown too, not just
+// null/undefined, so an upstream calculation error never renders as a
+// literal "NaN" or "Infinity" badge (see `odd/tasks/frontend-ui.md`, T2.1
+// item 5).
+const isUnknown = computed(
+  () => props.score === null || props.score === undefined || !Number.isFinite(props.score),
+)
 
-const color = computed<'success' | 'error' | undefined>(() => {
-  if (isUnknown.value || props.threshold === undefined) return undefined
-  return props.score! >= props.threshold ? 'success' : 'error'
+const colorByOutcome = {
+  unknown: undefined,
+  pass: 'success',
+  fail: 'error',
+} as const
+
+const outcome = computed<keyof typeof colorByOutcome>(() => {
+  if (isUnknown.value || props.threshold === undefined) return 'unknown'
+  return props.score! >= props.threshold ? 'pass' : 'fail'
 })
+
+const color = computed(() => colorByOutcome[outcome.value])
 
 const displayText = computed(() => (isUnknown.value ? 'Unknown' : String(props.score)))
 

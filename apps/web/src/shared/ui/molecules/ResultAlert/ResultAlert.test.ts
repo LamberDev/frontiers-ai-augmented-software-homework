@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mountWithVuetify } from '@/shared/lib/test/mountWithVuetify'
 import ResultAlert from './ResultAlert.vue'
 
@@ -86,7 +86,7 @@ describe('Given ResultAlert', () => {
   })
 
   describe('When closable is true and the close control is activated', () => {
-    it('Then it emits "close"', async () => {
+    it('Then it emits "close" and "update:modelValue"(false), and becomes hidden', async () => {
       // Arrange
       const wrapper = mountWithVuetify(ResultAlert, {
         props: { type: 'info', title: 'Dismiss me', closable: true },
@@ -97,6 +97,98 @@ describe('Given ResultAlert', () => {
 
       // Assert
       expect(wrapper.emitted('close')).toHaveLength(1)
+      expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false])
+      expect(wrapper.find('.result-alert').exists()).toBe(false)
+    })
+  })
+
+  describe('When a parent re-shows a dismissed alert via v-model', () => {
+    it('Then the alert becomes visible again', async () => {
+      // Arrange
+      const wrapper = mountWithVuetify(ResultAlert, {
+        props: { type: 'info', title: 'Dismiss me', closable: true, modelValue: true },
+      })
+      await wrapper.find('.v-alert__close button').trigger('click')
+      // A real v-model-bound parent reacts to the emitted `update:modelValue`
+      // by updating its own bound value; simulate that here.
+      await wrapper.setProps({ modelValue: false })
+      expect(wrapper.find('.result-alert').exists()).toBe(false)
+
+      // Act
+      await wrapper.setProps({ modelValue: true })
+
+      // Assert
+      expect(wrapper.find('.result-alert').exists()).toBe(true)
+    })
+  })
+
+  describe("When a dismissed alert's content changes", () => {
+    it('Then it re-appears with the new content', async () => {
+      // Arrange
+      const wrapper = mountWithVuetify(ResultAlert, {
+        props: { type: 'info', title: 'Dismiss me', closable: true },
+      })
+      await wrapper.find('.v-alert__close button').trigger('click')
+      expect(wrapper.find('.result-alert').exists()).toBe(false)
+
+      // Act
+      await wrapper.setProps({ title: 'New result' })
+
+      // Assert
+      expect(wrapper.find('.result-alert').exists()).toBe(true)
+      expect(wrapper.text()).toContain('New result')
+    })
+  })
+
+  describe('When a re-render reorders a list containing duplicate values', () => {
+    it('Then it renders every entry without a Vue duplicate-key warning', async () => {
+      // Arrange
+      // Vue's "Duplicate keys found during update" warning is only raised
+      // while diffing an update that cannot be resolved by simple
+      // prefix/suffix matching (an actual reorder), not on the initial
+      // mount and not on a same-order update — so the list must reorder at
+      // least once to exercise the keyed diff that a plain `:key="item"`
+      // would trip over for duplicate item text.
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const wrapper = mountWithVuetify(ResultAlert, {
+        props: {
+          type: 'error',
+          title: 'Not eligible',
+          items: ['Missing university', 'Score below threshold', 'Score below threshold'],
+        },
+      })
+
+      // Act
+      await wrapper.setProps({
+        items: ['Score below threshold', 'Score below threshold', 'Missing university'],
+      })
+
+      // Assert
+      const items = wrapper.findAll('li')
+      expect(items.map((item) => item.text())).toEqual([
+        'Score below threshold',
+        'Score below threshold',
+        'Missing university',
+      ])
+      expect(warnSpy).not.toHaveBeenCalled()
+
+      warnSpy.mockRestore()
+    })
+  })
+
+  describe('When items change', () => {
+    it('Then the rendered list updates to match', async () => {
+      // Arrange
+      const wrapper = mountWithVuetify(ResultAlert, {
+        props: { type: 'error', title: 'Not eligible', items: ['First'] },
+      })
+
+      // Act
+      await wrapper.setProps({ items: ['Second', 'Third'] })
+
+      // Assert
+      const items = wrapper.findAll('li')
+      expect(items.map((item) => item.text())).toEqual(['Second', 'Third'])
     })
   })
 })

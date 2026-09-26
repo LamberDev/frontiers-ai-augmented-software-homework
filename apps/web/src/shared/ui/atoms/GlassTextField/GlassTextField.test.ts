@@ -102,6 +102,36 @@ describe('Given GlassTextField', () => {
     })
   })
 
+  describe('When type is "number" and the user types a numeric value', () => {
+    it('Then it emits "update:modelValue" with a number, not a string', async () => {
+      // Arrange
+      const wrapper = mountWithVuetify(GlassTextField, {
+        props: { label: 'Publications', type: 'number', modelValue: 0 },
+      })
+
+      // Act
+      await wrapper.find('input').setValue('42')
+
+      // Assert
+      expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([42])
+    })
+  })
+
+  describe('When type is "number" and the field is cleared', () => {
+    it('Then it emits "update:modelValue" with null', async () => {
+      // Arrange
+      const wrapper = mountWithVuetify(GlassTextField, {
+        props: { label: 'Publications', type: 'number', modelValue: 5 },
+      })
+
+      // Act
+      await wrapper.find('input').setValue('')
+
+      // Assert
+      expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([null])
+    })
+  })
+
   describe('When name, autocomplete and inputmode are provided', () => {
     it('Then they are forwarded to the rendered input', () => {
       // Arrange / Act
