@@ -687,7 +687,7 @@ but no UI kit, theme or real components.
     distinct review findings across `shared/api` and both features, each with its own RED/GREEN
     test evidence, not split artificially since they are all mandatory follow-ups from the same
     review.
-  - Commit: pending.
+  - Commit: `5f852a8` — fix(web): harden api responses and composable error state.
 - [x] T8 Pages: `RegisterUserPage` (form + registered user/university + "Invite as reviewer"
   link to `/invite?userId=<id>`) and `InviteReviewerPage` (form prefilled from the query + one
   alert per invitation outcome with reasons). Update `AGENTS.md` (web usage notes).
@@ -754,10 +754,118 @@ but no UI kit, theme or real components.
     ~400-line planning heuristic — two full page compositions with BDD component-level test
     coverage (including two characterization RED passes) plus their steiger/docs follow-through,
     not split artificially.
+  - Commit: `8be3b93` — feat(web): compose register user and invite reviewer pages. Review of
+    `dc2bedd..8be3b93` (covers T8): RDD medium, 1161 lines, reliability lens approved and
+    acknowledged (lineage `review-f70a22bafa7fe4d2`); advisories accepted as mandatory
+    follow-ups, recorded as T8.1 below.
+- [x] T8.1 Review follow-ups (from the `dc2bedd..8be3b93` review above): `inviteReviewer`'s
+  `isInvitationResult` also validates `userId` as a non-empty string (a malformed/missing
+  `userId` now rejects with `ApiError`/`Response.InvalidBody` instead of passing through);
+  `InviteReviewerPage.test.ts`/`RegisterUserPage.test.ts` tighten their "one heading" assertions
+  to check the `h1` element's own text (`wrapper.get('h1').text()`/`findAll('h1')[0].text()`)
+  instead of a substring match against the whole page's rendered text (which coincidentally also
+  matched the form's `GlassCard` title, e.g. "Invite reviewer"/"Register user"); the ineligible
+  `InviteReviewerPage` outcome test now asserts the alert is rendered as Vuetify's `warning` type
+  (`bg-warning` class, from `type="warning"`'s `flat`-variant background color) and shows the
+  composable's own "Reviewer not invited" title (not just the API's own `message` text, which the
+  original assertion could have matched); the eligible outcome test asserts `bg-success`
+  similarly. Route: inline (mechanical test tightening plus one small, already-understood
+  production guard; under the 4-file mapping/writer-trigger thresholds).
+  - Evidence:
+    1. `isInvitationResult` (`features/invite-reviewer/api/inviteReviewer.ts` + `.test.ts`): RED —
+       added two tests (a body missing `userId`, a body with `userId: ''`) against the unchanged
+       guard: `pnpm test -- inviteReviewer` 35/37 passed, 2 failed (`promise resolved ... instead
+       of rejecting`). Fix: `isInvitationResult` now also requires
+       `typeof candidate.userId === 'string' && candidate.userId.length > 0`. GREEN: `pnpm test --
+       inviteReviewer` 37/37 passed.
+    2. `h1` text tightening (`pages/invite-reviewer/ui/InviteReviewerPage.test.ts`,
+       `pages/register-user/ui/RegisterUserPage.test.ts`): changed the "one heading" assertions
+       from `wrapper.text()).toContain('Invite reviewer'/'Register user')` (a substring that was
+       actually satisfied by `InviteReviewerForm`'s/`RegisterUserForm`'s own `GlassCard` title, not
+       the page's `h1`) to `wrapper.findAll('h1')[0].text()).toBe('Invite a reviewer'/'Register a
+       user')`. RED characterization: temporarily changed each page's `<h1>` text (`'Invite
+       reviewers'`/`'Register users'`) with the fix already in place — both tests failed as
+       expected (`expected 'Invite reviewers' to be 'Invite a reviewer'` and the `Register`
+       equivalent); reverted, re-verified GREEN.
+    3. Alert type/title tightening (`pages/invite-reviewer/ui/InviteReviewerPage.test.ts`): the
+       ineligible-outcome test's own mock `message` field ("Reviewer not invited.") coincidentally
+       overlapped the composable's title ("Reviewer not invited"), so the original
+       `wrapper.text()).toContain(...)` assertion could pass even if the title were wrong;
+       decoupled by changing the mock's `message` to "The request completed." and asserting the
+       alert's own `role`/class/title/text directly (`alert.attributes('role')` /
+       `alert.classes()).toContain('bg-warning')` / `alert.text()).toContain('Reviewer not
+       invited')`); the eligible-outcome test now also asserts `bg-success`. RED
+       characterization: with the decoupled mock message in place, temporarily renamed the
+       composable's ineligible-outcome title to `'Not invited'` — failed as expected (`expected
+       '...' to contain 'Reviewer not invited'`); separately, temporarily remapped
+       `RESULT_TYPE_BY_INVITED`'s `false` entry to `'error'` — failed as expected (`expected [...]
+       to include 'bg-warning'`); both reverted, re-verified GREEN.
+  - Checks (from `apps/web`): `pnpm format` PASS (no changes needed) · `pnpm test` PASS (28
+    files/182 tests, up from 180) · `pnpm lint` PASS (0 errors/0 warnings) · `pnpm steiger` PASS
+    (no problems found) · `pnpm build` PASS (`vue-tsc -b && vite build`, 0 errors) ·
+    `pnpm format:check` PASS.
+  - Files: `features/invite-reviewer/api/inviteReviewer.ts`, `.test.ts`,
+    `pages/invite-reviewer/ui/InviteReviewerPage.test.ts`,
+    `pages/register-user/ui/RegisterUserPage.test.ts`.
   - Commit: pending.
-- [ ] T9 Delivery: web `Dockerfile` (multi-stage Node build + nginx, `VITE_API_URL` build
-  arg), `.env.example`, and the `web` service in `docker-compose.yml` once the API compose file
-  (`feat/use-cases`) is on `main`; README run instructions.
+- [x] T9 Delivery: web `Dockerfile` (multi-stage Node build + nginx, `VITE_API_URL` build arg),
+  `.env.example`, README run instructions. Route: delegated (writer trigger, 2+ non-trivial
+  files).
+  - `Dockerfile`: build stage `node:24-alpine` (matches `.nvmrc`) with Corepack activating the
+    `packageManager`-pinned pnpm (`pnpm@9.12.3`), `pnpm install --frozen-lockfile`, `ARG
+    VITE_API_URL` exported as `ENV` before `pnpm build` (Vite inlines `VITE_*` vars at build
+    time, per `shared/config/apiUrl.ts`/`AGENTS.md`). Runtime stage
+    `nginxinc/nginx-unprivileged:stable-alpine` (already listens on 8080 as its own non-root
+    `nginx` user, uid 101 — verified with `docker exec ... id`), serving `dist` via a custom
+    `nginx.conf` and a `HEALTHCHECK` using BusyBox's `wget` (available on Alpine, unlike
+    `apps/api`'s Debian-based runtime image, which needs `docker-compose.yml`'s `/dev/tcp` trick
+    instead).
+  - `nginx.conf`: SPA history-fallback (`try_files $uri $uri/ /index.html`) so a deep link (e.g.
+    `/invite`) serves `index.html` instead of a 404; `/assets/` (Vite's hashed, content-addressed
+    filenames) cached `immutable` for a year, `index.html` itself `no-cache` so a new deployment
+    is always picked up; `X-Content-Type-Options`/`Referrer-Policy` on every location. No CSP:
+    documented in the file that Vuetify injects its theme as an inline `<style>` tag at runtime,
+    which a `style-src` without `'unsafe-inline'` (impossible to avoid from a static file server,
+    which cannot mint a per-response nonce) would break. Deviation from the task's literal
+    suggestion: nginx's `add_header` does not inherit into a `location` that sets its own
+    `add_header`, so the two security headers are repeated in every `location` block instead of
+    declared once at the `server` level (discovered by curling the running container and finding
+    them missing on `/` and `/index.html`, which both internally redirect to the `location =
+    /index.html` block).
+  - `.dockerignore`: excludes `node_modules`, `dist`, `coverage`, `.git`, `.vite`, the Dockerfile
+    itself, and real env files (`.env`, `.env.*`), re-including `.env.example` (`!.env.example`).
+  - `.env.example`: `VITE_API_URL=http://localhost:5112` (already referenced by `AGENTS.md`).
+  - Root `.gitignore`: added a bare `.env` entry (only `.env.local`/`.env.*.local` were ignored
+    before, so a real `apps/web/.env` was not actually protected from an accidental `git add`);
+    `.env.example` stays tracked (`git check-ignore` confirms: not ignored).
+  - Root `README.md`: new "Frontend" section — prerequisites/`pnpm install`/`.env.example`
+    copy/`pnpm dev` (with the API's CORS-allowed origin note), the checks list, and building/
+    running the Docker image with the exact commands from this task's instructions.
+  - Not done here (explicit scope note, task instructions): no root `docker-compose.yml` change —
+    the API's compose file lives on the unmerged `feat/use-cases` branch; adding the `web`
+    service here would conflict with that branch's own eventual addition. Recorded as a new,
+    unchecked T9.1 below instead of silently dropped.
+  - Files: `apps/web/Dockerfile` (+new), `nginx.conf` (+new), `.dockerignore` (+new),
+    `.env.example` (+new); root `.gitignore` (updated), `README.md` (updated).
+  - Docker verification (`docker version` available locally):
+    `docker build --build-arg VITE_API_URL=http://localhost:5112 -t peer-review-web-test
+    apps/web` succeeded (~89 MB final image, ~11s build). `docker run -d -p
+    127.0.0.1:15173:8080 peer-review-web-test`: `curl -sI http://127.0.0.1:15173/` → `200`,
+    `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
+    `Cache-Control: no-cache`; a hashed asset (`/assets/index-*.js`) → `200`,
+    `Cache-Control: public, max-age=31536000, immutable`; a deep link (`/invite`) → `200`
+    (serves `index.html`); a missing asset (`/assets/does-not-exist.js`) → `404`; `docker exec
+    ... id` → `uid=101(nginx)`; the container's own `HEALTHCHECK` reached `healthy` within one
+    `start_period`. Container and image stopped/removed afterwards
+    (`docker rm`/`docker rmi`).
+  - Checks (from `apps/web`): `pnpm format` PASS (no changes needed) · `pnpm test` PASS (28
+    files/182 tests) · `pnpm lint` PASS (0 errors/0 warnings) · `pnpm steiger` PASS (no problems
+    found) · `pnpm build` PASS (`vue-tsc -b && vite build`, 0 errors) · `pnpm format:check` PASS.
+  - Commit: pending.
+- [ ] T9.1 Add the `web` service to `docker-compose.yml` once `feat/use-cases` (which owns that
+  file) is on `main`: `build: ./apps/web` with `VITE_API_URL=http://localhost:8080` (the
+  compose-network API origin), publish `127.0.0.1:5173:8080` so it matches the API's CORS-allowed
+  origin `http://localhost:5173`, `depends_on: api` with `condition: service_healthy`.
 
 ## API contract (from `feat/use-cases`, explored 2026-09-26)
 Defined by the infrastructure/use-cases work; the frontend consumes it as-is.
@@ -873,11 +981,35 @@ Defined by the infrastructure/use-cases work; the frontend consumes it as-is.
   the `entities/**`/`features/**` steiger relaxations were re-verified as permanent — this app's
   1:1 page-to-form/entity shape will always trip `fsd/insignificant-slice` — and their comments
   rewritten accordingly, rather than removed). All checks green (`pnpm test` 28 files/180 tests,
-  `pnpm lint`, `pnpm steiger`, `pnpm build`, `pnpm format:check`). Commit pending user consent.
+  `pnpm lint`, `pnpm steiger`, `pnpm build`, `pnpm format:check`). Committed as `8be3b93`. Review
+  of `dc2bedd..8be3b93` (covers T8): RDD medium, 1161 lines, reliability lens approved and
+  acknowledged (lineage `review-f70a22bafa7fe4d2`); advisories accepted as T8.1.
+- 2026-09-26: T8.1 implemented and verified (review follow-ups from the `dc2bedd..8be3b93`
+  review: `inviteReviewer`'s `isInvitationResult` also rejects a missing/empty `userId`;
+  `InviteReviewerPage.test.ts`/`RegisterUserPage.test.ts`'s "one heading" assertions now check the
+  `h1` element's own text instead of a whole-page substring match that the form's `GlassCard`
+  title also happened to satisfy; the ineligible/eligible `InviteReviewerPage` outcome tests now
+  assert the alert's own Vuetify type class (`bg-warning`/`bg-success`) and the composable's own
+  title, decoupled from the mocked API `message` text). All checks green (`pnpm test` 28
+  files/182 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`, `pnpm format:check`). Commit
+  pending user consent.
+- 2026-09-26: T9 implemented and verified (`apps/web/Dockerfile` — multi-stage `node:24-alpine`
+  build with Corepack-pinned pnpm and a `VITE_API_URL` build arg, `nginxinc/nginx-unprivileged:
+  stable-alpine` runtime with a custom `nginx.conf` — SPA history fallback, immutable asset
+  caching, `no-cache` `index.html`, security headers repeated per `location` due to nginx's
+  non-inheriting `add_header`, a BusyBox-`wget` `HEALTHCHECK`; `.dockerignore`; `.env.example`;
+  root `.gitignore` now also ignores a bare `.env`; root `README.md` gained a "Frontend" section).
+  Docker was available locally: built the image (~89 MB), ran it, and verified headers, asset
+  caching, the SPA deep-link fallback, a 404 for a missing asset, the non-root `nginx` user and a
+  `healthy` `HEALTHCHECK`, then removed the container and image. All checks green (`pnpm test` 28
+  files/182 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`, `pnpm format:check`). The `web`
+  service in `docker-compose.yml` is out of scope here (that file lives on the unmerged
+  `feat/use-cases` branch) — recorded as new, unchecked T9.1. Commit pending user consent.
 
 ## Next step
-T9 (delivery: web `Dockerfile`, `.env.example`, `web` service in `docker-compose.yml` once the
-API compose file from `feat/use-cases` is on `main`, README run instructions). T5.1, T6 and T7 are
-committed as three work-unit commits (`e677e0b`, `c9874a0`, `dc2bedd`). T7.1 and T8 are fully
-separable (no file is touched by both) and are implemented and verified, pending the user's commit
-consent as two further work-unit commits.
+Push and open a PR to `main` for the still-uncommitted work (`T7.1`, `T8`, `T8.1`, `T9`, as
+separable work-unit commits — see each task's `Commit:` line above), then `T9.1` once
+`feat/use-cases` merges into `main` and its `docker-compose.yml` is available to extend. T5.1, T6
+and T7 are already committed (`e677e0b`, `c9874a0`, `dc2bedd`), as are T7.1 (`5f852a8`) and T8
+(`8be3b93`); `T8.1` and `T9` are implemented and verified, pending the user's commit consent as
+two further work-unit commits (they touch disjoint files, confirmed by `git status`).

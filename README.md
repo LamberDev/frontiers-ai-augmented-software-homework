@@ -60,4 +60,40 @@ The pre-commit hook gives fast local feedback on staged files, but it can be ski
 (`--no-verify`, `LEFTHOOK=0`); CI is the definitive validation and also runs the checks that
 are too slow for the hook.
 
-Build and run instructions will be added as the apps are implemented.
+## Frontend
+
+From `apps/web`:
+
+```
+pnpm install
+cp .env.example .env   # VITE_API_URL=http://localhost:5112 by default
+pnpm dev                # http://localhost:5173, calling the API at VITE_API_URL
+```
+
+The API's CORS policy only allows the origin `http://localhost:5173`, so keep `pnpm dev`'s
+default port when running both apps locally.
+
+Checks (from `apps/web`, all run in CI):
+
+```
+pnpm build     # vue-tsc -b && vite build
+pnpm lint
+pnpm steiger
+pnpm test
+pnpm format:check
+```
+
+### Docker image
+
+`apps/web/Dockerfile` builds the production bundle and serves it with nginx. The API origin is
+baked into the bundle at build time, so pass it as a build argument:
+
+```
+docker build --build-arg VITE_API_URL=http://localhost:5112 -t peer-review-web apps/web
+docker run -p 127.0.0.1:5173:8080 peer-review-web
+```
+
+Open `http://localhost:5173`; it still calls whatever `VITE_API_URL` the image was built with,
+so it must match the API's CORS-allowed origin above.
+
+Build and run instructions for `apps/api` will be added as that app is implemented.

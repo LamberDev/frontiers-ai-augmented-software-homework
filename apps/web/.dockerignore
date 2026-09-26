@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+.git
+.vite
+Dockerfile
+.dockerignore
+
+# Real env files never belong in the build context; the build-time API
+# origin comes from the VITE_API_URL build arg instead (see Dockerfile).
+.env
+.env.*
+!.env.example
