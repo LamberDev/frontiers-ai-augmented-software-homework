@@ -862,6 +862,11 @@ but no UI kit, theme or real components.
     files/182 tests) · `pnpm lint` PASS (0 errors/0 warnings) · `pnpm steiger` PASS (no problems
     found) · `pnpm build` PASS (`vue-tsc -b && vite build`, 0 errors) · `pnpm format:check` PASS.
   - Commit: pending.
+  - Commits: T8.1 `0e4da13`, T9 `990c0b0`. Review of `8be3b93..990c0b0` (RDD medium, 366 lines,
+    run before opening the PR): reliability lens approved and acknowledged (lineage
+    `review-b181b5457b9834d0`); its WARNING (empty `VITE_API_URL` build arg produced a broken but
+    healthy image) fixed inline: the Dockerfile fails the build when the argument is empty.
+    Verified: `docker build` without the argument exits 1 with the message, with it exits 0.
 - [ ] T9.1 Add the `web` service to `docker-compose.yml` once `feat/use-cases` (which owns that
   file) is on `main`: `build: ./apps/web` with `VITE_API_URL=http://localhost:8080` (the
   compose-network API origin), publish `127.0.0.1:5173:8080` so it matches the API's CORS-allowed

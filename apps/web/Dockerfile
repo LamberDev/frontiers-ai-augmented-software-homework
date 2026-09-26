@@ -21,6 +21,9 @@ COPY . .
 # for this image and requires a rebuild to change.
 ARG VITE_API_URL
 ENV VITE_API_URL=${VITE_API_URL}
+# Fail fast: without an API origin the image would build and pass its
+# healthcheck but every API call would fail in the browser.
+RUN test -n "$VITE_API_URL" || (echo "The VITE_API_URL build argument is required." >&2 && exit 1)
 RUN pnpm build
 
 # Runtime stage: serves the static bundle with nginx as its own unprivileged
