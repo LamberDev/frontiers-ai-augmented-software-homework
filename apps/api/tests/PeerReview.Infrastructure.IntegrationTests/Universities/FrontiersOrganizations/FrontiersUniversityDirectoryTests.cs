@@ -82,6 +82,18 @@ public class FrontiersUniversityDirectoryTests
     }
 
     [Fact]
+    public async Task FindByNameAsync_WithNullFirstArrayElement_ReturnsInvalidEntry()
+    {
+        const string json = "[null]";
+        var (sut, _) = CreateSut((_, _) => Task.FromResult(JsonResponse(HttpStatusCode.OK, json)));
+
+        var result = await sut.FindByNameAsync("anything", CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(UniversityDirectoryErrors.InvalidEntry, result.Error);
+    }
+
+    [Fact]
     public async Task FindByNameAsync_WithBlankOrganizationNameAndNonEmptyMatchedName_ReturnsInvalidEntryWithoutFallingBackToMatchedName()
     {
         const string json = """[{"id":1,"organizationName":"   ","matchedName":"Some Matched Name","score":10.0}]""";

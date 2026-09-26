@@ -28,7 +28,7 @@ public sealed class FrontiersUniversityDirectory : IUniversityDirectory
     {
         var requestUri = $"{SuggestionsRelativePath}?query={Uri.EscapeDataString(universityName)}&maxcount={MaxSuggestionCount}";
 
-        List<FrontiersOrganizationSuggestion>? suggestions;
+        List<FrontiersOrganizationSuggestion?>? suggestions;
 
         try
         {
@@ -40,7 +40,7 @@ public sealed class FrontiersUniversityDirectory : IUniversityDirectory
             }
 
             suggestions = await response.Content
-                .ReadFromJsonAsync<List<FrontiersOrganizationSuggestion>>(SerializerOptions, cancellationToken)
+                .ReadFromJsonAsync<List<FrontiersOrganizationSuggestion?>>(SerializerOptions, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -72,11 +72,11 @@ public sealed class FrontiersUniversityDirectory : IUniversityDirectory
 
         var suggestion = suggestions[0];
 
-        if (suggestion.Id <= 0 || string.IsNullOrWhiteSpace(suggestion.OrganizationName))
+        if (suggestion is null || suggestion.Id <= 0 || string.IsNullOrWhiteSpace(suggestion.OrganizationName))
         {
-            // Invalid upstream data never falls back to matchedName: an empty organizationName or
-            // a non-positive id is treated as an invalid directory entry regardless of what
-            // matchedName carries.
+            // Invalid upstream data never falls back to matchedName: a null element, an empty
+            // organizationName, or a non-positive id is treated as an invalid directory entry
+            // regardless of what matchedName carries.
             return Result.Failure<UniversityDirectoryEntry>(UniversityDirectoryErrors.InvalidEntry);
         }
 
