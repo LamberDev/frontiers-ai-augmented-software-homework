@@ -6,16 +6,20 @@ services:
       context: ./apps/api
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      # Published on localhost only: this file is for local runs.
+      - "127.0.0.1:8080:8080"
     environment:
       # Production configuration, with the frontend origin passed explicitly
       # instead of coming from appsettings.Development.json.
       ASPNETCORE_ENVIRONMENT: Production
       Cors__AllowedOrigins__0: http://localhost:5173
+    # Restarts the container when the process exits. Compose does not restart an
+    # unhealthy container: the healthcheck only reports the status.
     restart: unless-stopped
     healthcheck:
       # The runtime image has no curl or wget: bash's /dev/tcp sends a plain
-      # HTTP request to /health and checks for a 200 status line.
+      # HTTP request to /health and checks for a 200 status line. The port must
+      # match ASPNETCORE_HTTP_PORTS in apps/api/Dockerfile.
       test:
         - CMD-SHELL
         - >-

@@ -16,7 +16,8 @@ RUN dotnet restore src/PeerReview.Api/PeerReview.Api.csproj
 COPY src/ src/
 RUN dotnet publish src/PeerReview.Api -c Release -o /app/publish --no-restore /p:UseAppHost=false
 
-# Runtime stage: plain HTTP on 8080 as the image's non-root user.
+# Runtime stage: plain HTTP on 8080 as the image's non-root user. The port is
+# also used by the port mapping and the healthcheck in docker-compose.yml.
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080

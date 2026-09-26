@@ -241,7 +241,15 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
 - [x] T5 Docker: multi-stage `apps/api/Dockerfile`, `.dockerignore`, root `docker-compose.yml`
   with the api service (web service added by `frontend-ui`); verify `docker build` and `/health`.
   Route: delegated (writer), parent trimmed comments and upgraded the healthcheck.
-  - Written (uncommitted): SDK 10.0 build stage (restore layer cached, publish, no tests),
+  - Commit (user consented): `4333666`. RDD: assess (base `c4db629`) high (`high_risk`: compose
+    starts processes); consent granted; four lenses (risk, resilience, readability, reliability);
+    approved and acknowledged (lineage `review-de3ae8d93a6c3da3`, authority burned). Reviewed
+    boundary advances to `4333666`. Advisory findings (non-blocking): port published on all host
+    interfaces (SUGGESTION); floating `10.0` base image tags (SUGGESTION x2); compose does not
+    restart an unhealthy container (SUGGESTION); this entry said "uncommitted" while checked
+    (WARNING, fixed here); port 8080 repeated without a visible link (SUGGESTION); container
+    contract verified only by hand, no CI step (SUGGESTION).
+  - Contents: SDK 10.0 build stage (restore layer cached, publish, no tests),
     aspnet 10.0 runtime as `$APP_UID` on 8080; compose `api` service in Production with
     `Cors__AllowedOrigins__0=http://localhost:5173`, healthcheck via bash `/dev/tcp` GET `/health`
     expecting 200 (the runtime image has no curl or wget).
@@ -255,8 +263,16 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
     `http://localhost:5173` allowed; `down` OK.
   - Also observed in the container (Production): a malformed JSON body returns a bare 400 with an
     empty body — confirms the T4b review finding that T4c fixes (`ThrowOnBadRequest`).
+- [x] T5b T5 review follow-ups (user accepted, 2026-09-26). Route: inline (2 mechanical edits).
+  - Port published on `127.0.0.1` only; comments tie the healthcheck port to
+    `ASPNETCORE_HTTP_PORTS` and state that compose does not restart an unhealthy container.
+    Floating base image tags: kept, explained in T6. CI container job: not added (user agreed).
+  - Evidence: `docker compose config` shows `host_ip: 127.0.0.1`; clean `git archive` of
+    `4333666` plus the edited files: `docker compose up -d --build --wait` -> `Healthy`,
+    `docker port` -> `8080/tcp -> 127.0.0.1:8080`, `/health` 200; `down` OK.
 - [ ] T6 README: build/run (local and Docker), API contract summary, deviations (Guid ids, null
-  score not eligible, score semantics), known limitation (university get-or-create race under
+  score not eligible, score semantics), floating `10.0` base image tags (patch updates vs
+  reproducibility), known limitation (university get-or-create race under
   concurrent registrations, no unique index in InMemory), LLM used and why, link to `docs/ai/conversations`.
 
 ## Acceptance criteria / checks (from `apps/api`)
