@@ -60,7 +60,9 @@ but no UI kit, theme or real components.
 - Strategy: ask-on-risk. Forecast > 400 authored lines: the chain strategy will be asked before
   the commit that crosses the budget. Commits only with the user's explicit consent.
 - Chain strategy: stacked-to-main — each slice is its own branch/PR to main after the previous one
-  merges (PR #10 = T1+T1.1, merged `274eddd`); T2 on `feat/frontend-ui-glass`.
+  merges (PR #10 = T1+T1.1, merged `274eddd`); T2/T2.1/T2.2/T2.3 on `feat/frontend-ui-glass`.
+- Delivery note: T3 on `feat/frontend-ui-shell`, stacked on `feat/frontend-ui-glass` while PR #12
+  is open; retarget to main after #12 merges.
 
 ## Tasks
 - [x] T1 Vuetify and `frontiers` theme: install `vuetify`, `vite-plugin-vuetify`, `@mdi/font`,
@@ -299,8 +301,85 @@ but no UI kit, theme or real components.
       (no problems found) · `pnpm build` PASS (`vue-tsc -b && vite build`, 0 errors) ·
       `pnpm format:check` PASS.
   - Commit: `refactor(web): make ResultAlert stateless and restore button variant fallback` (follows `5237d05`).
-- [ ] T3 Template: `GlassShell` layout (gradient background, blobs, container) and reworked
+- [x] T3 Template: `GlassShell` layout (gradient background, blobs, container) and reworked
   `AppHeader` with Register/Invite navigation; responsive, visible focus.
+  Route: delegated (writer trigger, 2+ non-trivial files).
+  - Placement decision: `GlassShell` lives at `src/widgets/glass-shell/` (`ui/GlassShell.vue` +
+    `index.ts` public API), matching the atomic-design-to-FSD mapping table above (Templates ->
+    `widgets/`, `app/layouts`) and mirroring the existing `widgets/app-header` shape (a
+    `ui/<Name>.vue` + slice-level `index.ts`, no `model`/`api`). `app/layouts` was not used since
+    `GlassShell` has no dependency on the composition root (router/Vuetify plugin instances) and
+    is reusable as an ordinary widget; steiger raised no objection (clean run).
+  - Evidence:
+    1. `GlassShell` (new `src/widgets/glass-shell/ui/GlassShell.vue` + `.test.ts` +
+       `src/widgets/glass-shell/index.ts`): renders a `position: fixed; inset: 0` gradient
+       background (`#0C4DED` -> `#003BDE` -> `#0024B0`) with three absolutely-positioned, blurred
+       decorative blobs (`#25BCBD` teal, `#712E74` purple, `#6D9EFD` blue), all inside one
+       `aria-hidden="true"`, `pointer-events: none` wrapper (`.glass-shell__background`); a
+       `header` slot rendered only when provided (`v-if="$slots.header"`); and a centered
+       `.glass-shell__container` (max-width 960px, mobile-first padding, wider from 600px up) for
+       the default slot. The component renders no landmark elements itself (no own `<main>`), so
+       nesting it inside `v-main` (which already renders `<main>`) does not duplicate the
+       landmark — verified by a dedicated test. A subtle float animation on the blobs is disabled
+       under `prefers-reduced-motion: reduce`. RED (before implementation): `pnpm test` failed
+       with `Failed to resolve import "./GlassShell.vue"` (file did not exist). GREEN (after
+       implementation): `pnpm test -- GlassShell` 4/4 passed (header + default slot both render;
+       background layer is `aria-hidden`; no nested `<main>`; no header wrapper when the slot is
+       unused).
+    2. `AppHeader` (`src/widgets/app-header/ui/AppHeader.vue` reworked + new `.test.ts`): now a
+       `<header class="app-header glass-surface">` (reuses the shared `.glass-surface` class
+       instead of styling Vuetify directly) with `BrandLogo` (`subtitle="Peer Review"`) on the
+       left and a `<nav aria-label="Primary">` on the right, driven by a `navItems` array
+       (`{ to, label }[]`) rendered with `v-for` — `Register user` -> `/register`, `Invite
+       reviewer` -> `/invite`. `RouterLink`'s own default behavior sets `aria-current="page"` and
+       the `router-link-exact-active` class on the exact-active link (confirmed by reading
+       `vue-router`'s `RouterLinkImpl` render function; no extra logic needed), styled with a
+       visible underline + color change; focus uses `:focus-visible` with a 3px `#0C4DED` outline
+       for contrast; the header/nav wrap and stay usable on narrow widths (`flex-wrap: wrap`).
+       Tests mount with a real `createMemoryHistory()` router. RED (before implementation, against
+       the old placeholder header): `pnpm test -- AppHeader` — 1/3 failed (`nav`'s
+       `aria-label` was `undefined`, not `'Primary'`; no `BrandLogo`/"Peer Review" text yet). GREEN
+       (after implementation): `pnpm test -- AppHeader` 3/3 passed (header/nav/logo/links render;
+       the register-route link has `aria-current="page"` and the invite link does not; on the
+       invite route it is the reverse).
+    3. `App.vue`: now `<v-app><v-main><GlassShell><template #header><AppHeader
+       /></template><RouterView /></GlassShell></v-main></v-app>`. Added a scoped
+       `.v-application { background: transparent; }` override (Vue's scoped CSS applies the
+       component's data attribute to a direct child component's root element, so this reaches
+       `VApp`'s rendered `.v-application` div without `:deep()`) so `GlassShell`'s fixed brand
+       gradient shows through instead of the theme's opaque `background` color.
+    4. Extended `src/app/index.test.ts`'s existing wiring test with two more assertions:
+       `.glass-shell__background` exists, and exactly one `<main>` element is rendered end-to-end.
+       RED (before implementation): both new assertions failed (`.glass-shell__background` was
+       `null`; N/A for main count since the first assertion already failed). GREEN (after): the
+       full wiring test passes with both assertions.
+    5. `shared/lib/index.ts`: steiger's `fsd/no-public-api-sidestep` flagged the two new
+       cross-layer test files (`widgets/app-header/ui/AppHeader.test.ts`,
+       `widgets/glass-shell/ui/GlassShell.test.ts`) deep-importing
+       `@/shared/lib/test/mountWithVuetify` — unlike same-layer imports from `shared/ui/**` test
+       files (already tolerated, unchanged). Fixed by re-exporting `mountWithVuetify` from
+       `shared/lib`'s public API (`shared/lib/index.ts`) and importing it as `@/shared/lib` from
+       the two new widget test files only (existing `shared/ui/**` test files keep their working
+       deep import, left unchanged). No relaxation added to `steiger.config.ts`.
+    - Checks (from `apps/web`): `pnpm format` PASS (reformatted `AppHeader.vue` only, one
+      multi-attribute line collapsed) · `pnpm test` PASS (14 files/80 tests, up from 12
+      files/73) · `pnpm lint` PASS (0 errors/0 warnings) · `pnpm steiger` PASS (no problems found,
+      no new relaxation) · `pnpm build` PASS (`vue-tsc -b && vite build`, 0 errors) ·
+      `pnpm format:check` PASS.
+    - Size: ~334 authored changed lines (93 insertions/deletions across 4 modified files + 241
+      lines across 4 new files), under the ~400-line planning heuristic.
+  - Commit: `3c8f7d8` — feat(web): add glass shell layout and navigation header. RDD assess from
+    `5237d05` (covers 72c3233, 5c28e6a, 3c8f7d8): medium, 911 lines, review granted, but the bound
+    STATUS after START timed out twice (`operation_timeout`, `pre_native`, Gentle AI defect,
+    occurrence added to gentle-ai#4655 with user consent); candidate declined via the provider
+    decline invocation. Outcome: unavailable → declined; no review receipt for this range.
+  - Parent spot check (2026-09-26): the writer had re-exported the test-only `mountWithVuetify`
+    from `shared/lib/index.ts` to satisfy steiger; that would let production imports of
+    `@/shared/lib` pull `@vue/test-utils` and the global `ResizeObserver` stub into the bundle.
+    Moved it to `apps/web/test/support/mountWithVuetify.ts` behind a `@test` alias
+    (`vite.config.ts`, `tsconfig.app.json`), reverted the `shared/lib` export, documented in
+    `apps/web/AGENTS.md`. Re-checked: `pnpm test` 14 files / 80 tests, lint, steiger, build,
+    format:check all clean.
 - [ ] T4 API-free forms: `RegisterUserForm` and `InviteReviewerForm` in `features/*/ui`, local
   validation (user name required and <= 100 chars, publications >= 0, user id required), emit
   typed `submit` events.
@@ -347,7 +426,14 @@ but no UI kit, theme or real components.
   the list, no reopen logic; `GlassButton`'s `'flat'` fallback restored with per-variant tests).
   All checks green (`pnpm test` 12 files/73 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`,
   `pnpm format:check`). Committed as `72c3233`.
+- 2026-09-26: T3 implemented and verified (`GlassShell` template widget — gradient background,
+  blurred blobs, `header`/default slots, centered container — plus `AppHeader` reworked into a
+  glass nav bar with `BrandLogo` and data-driven Register/Invite links; `App.vue` composed with
+  `GlassShell`; test helper later moved to `apps/web/test/support` behind `@test`). All checks
+  green (`pnpm test` 14 files/80 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`,
+  `pnpm format:check`). Committed as `3c8f7d8`; review unavailable (Gentle AI timeout) and
+  declined for that candidate.
 
 ## Next step
-T2.3 is implemented and verified; awaiting user consent to commit. Then T3 (`GlassShell` layout
-and reworked `AppHeader`), once the user authorizes the next commit/task.
+T3 is implemented and verified; awaiting user consent to commit. Then T4 (`RegisterUserForm` and
+`InviteReviewerForm`, local validation, emit-only), once the user authorizes the next commit/task.

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { mountWithVuetify } from '@/shared/lib/test/mountWithVuetify'
+import { mountWithVuetify } from '@test/support/mountWithVuetify'
 import ResultAlert from './ResultAlert.vue'
 
 interface TestResult {

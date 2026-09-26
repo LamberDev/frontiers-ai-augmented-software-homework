@@ -39,6 +39,8 @@ describe('Given the composed peer review app', () => {
       expect(host.querySelector('nav')).not.toBeNull()
       expect(host.querySelector('a[href="/register"]')).not.toBeNull()
       expect(host.textContent).toContain('Register user')
+      expect(host.querySelector('.glass-shell__background')).not.toBeNull()
+      expect(host.querySelectorAll('main')).toHaveLength(1)
 
       // Cleanup
       app.unmount()

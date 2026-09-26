@@ -9,6 +9,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Test-only support code (never imported by production code), kept
+      // outside `src` so it is not part of any FSD slice public API.
+      '@test': fileURLToPath(new URL('./test', import.meta.url)),
     },
   },
   test: {

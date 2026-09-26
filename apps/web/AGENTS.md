@@ -36,6 +36,9 @@ Slice names mirror the backend's business use cases/entities: `register-user`,
 - Vue component files are PascalCase (`RegisterUserPage.vue`, `AppHeader.vue`).
 - Use the `@/` alias (-> `src/`) instead of relative `../../..` paths across slices; it's
   configured in both `vite.config.ts` and `tsconfig.app.json`.
+- Test-only support code (e.g. `mountWithVuetify`) lives in `test/support/` outside `src`,
+  imported as `@test/...`; it is never part of a slice public API, so production code can't
+  pull `@vue/test-utils` or test globals into the bundle.
 
 ## Configuration
 
