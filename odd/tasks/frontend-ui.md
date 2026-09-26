@@ -15,7 +15,7 @@ but no UI kit, theme or real components.
   `GlassShell` layout and `AppHeader`, `RegisterUserForm` and `InviteReviewerForm` (local
   validation, emit-only), result views in `entities/*/ui`, page composition, `apps/web/AGENTS.md`
   update.
-- Out (pending the API contract, defined by the infrastructure agent): API calls in
+- Out (superseded 2026-09-26: the API contract is defined, P1–P3 folded into T6–T9): API calls in
   `entities/*/api`, `registerUser()` / `inviteReviewer()`, stateful composables
   (`useRegisterUser`, `useInviteReviewer`), mapping backend validation errors to fields, the id
   type used by `InviteReviewer`, web Docker image.
@@ -380,21 +380,138 @@ but no UI kit, theme or real components.
     (`vite.config.ts`, `tsconfig.app.json`), reverted the `shared/lib` export, documented in
     `apps/web/AGENTS.md`. Re-checked: `pnpm test` 14 files / 80 tests, lint, steiger, build,
     format:check all clean.
-- [ ] T4 API-free forms: `RegisterUserForm` and `InviteReviewerForm` in `features/*/ui`, local
-  validation (user name required and <= 100 chars, publications >= 0, user id required), emit
-  typed `submit` events.
-- [ ] T5 Result views: `UserSummary`, `UniversityCard` and eligibility success/rejection view in
-  `entities/*/ui`, driven by props using the existing `User`/`University` types.
-- [ ] T6 Pages and closure: compose pages with the forms (provisional state on submit, no API
-  calls), then `pnpm build`, `pnpm lint`, `pnpm steiger`, `pnpm test`; document atomic design,
-  Vuetify and glass rules in `apps/web/AGENTS.md`.
+- [x] T4 Forms in `features/*/ui`: `RegisterUserForm` (userName required, trimmed, <= 100;
+  universityName required; numberOfPublications required integer >= 0) and `InviteReviewerForm`
+  (userId required, UUID format). Local validation, typed `submit` events, `loading` and
+  `fieldErrors` props so server validation errors can be shown per field.
+  Route: delegated (writer trigger, 2+ non-trivial files).
+  - Validation timing: a field's local errors show once that field has been touched (its value
+    changed at least once) or the form has been submitted at least once; after the first submit
+    attempt every field counts as touched, so later edits re-validate live. Documented in each
+    form's doc comment.
+  - Server-vs-local field-error rule: a `fieldErrors` (server) entry for a field is shown and
+    takes priority over local validation for that field, until the user edits that specific field
+    again (then local validation takes over for it); a fresh `fieldErrors` prop (new object,
+    e.g. from a new submission) makes the server error reappear even for a field edited since the
+    previous one. Implemented with a per-field `dirtySinceServerError` flag reset by a `watch` on
+    the `fieldErrors` prop and set by a `watch` on that field's own ref.
+  - Files: `features/register-user/model/types.ts` (+new), `model/validateRegisterUser.ts`
+    (+new) + `.test.ts`, `ui/RegisterUserForm.vue` (+new) + `.test.ts`, `index.ts` (updated);
+    `features/invite-reviewer/model/types.ts` (+new), `model/validateInviteReviewer.ts` (+new)
+    + `.test.ts`, `ui/InviteReviewerForm.vue` (+new) + `.test.ts`, `index.ts` (updated).
+    `steiger.config.ts`: the `fsd/no-segmentless-slices` relaxation for `features/**` is now
+    obsolete (both feature slices have real `ui`/`model` segments) and was replaced by a
+    `fsd/insignificant-slice` relaxation for `features/**` — this rule still fires because no
+    widget/page consumes either form yet (T8 lands that); remove once T8 wires the forms in.
+  - RED (validators, before implementation): `pnpm test -- validateRegisterUser
+    validateInviteReviewer` — both suites failed with `Failed to resolve import` (files did not
+    exist). GREEN: 2 files/16 tests passed.
+  - RED (`RegisterUserForm`, before implementation): `pnpm test -- RegisterUserForm` failed,
+    `Failed to resolve import "./RegisterUserForm.vue"`. GREEN: 1 file/10 tests passed (valid
+    trimmed submit; empty-submit shows all three required errors with `aria-invalid`; untouched
+    field shows no error; touch-then-clear shows an error without submitting; non-integer
+    publications blocks submit; `loading` disables submit; server `fieldErrors` shown, cleared on
+    edit, and reinstated by a fresh `fieldErrors` prop).
+  - RED (`InviteReviewerForm`, before implementation): `pnpm test -- InviteReviewerForm` failed,
+    `Failed to resolve import "./InviteReviewerForm.vue"`. GREEN: 1 file/8 tests passed (valid
+    trimmed UUID submit; empty-submit required error with `aria-invalid`; non-UUID format error;
+    `initialUserId` prefill; `loading` disables submit; server `fieldErrors` shown and cleared on
+    edit).
+  - Checks (from `apps/web`): `pnpm format` PASS (reformatted whitespace only, plus removed an
+    unused `reactive` import lint error caught by `pnpm lint`, fixed before final run) ·
+    `pnpm test` PASS (20 files/125 tests, up from 18 files/114 before T5) · `pnpm lint` PASS
+    (0 errors/0 warnings) · `pnpm steiger` PASS (no problems found, see relaxation note above) ·
+    `pnpm build` PASS (`vue-tsc -b && vite build`, 0 errors) · `pnpm format:check` PASS.
+  - Size: ~880 authored lines across 12 files (2 features x (types + validator + validator test +
+    form + form test + index)), naturally above the ~400-line heuristic — two full forms with
+    BDD test coverage for validation timing, server/local error precedence, a11y and loading
+    state, not split artificially.
+  - Commit: pending user consent.
+- [x] T5 Result views in `entities/*/ui`: `UserSummary` (userName, publications, copyable userId)
+  and `UniversityCard` (name, Frontiers organization id, `ScoreBadge` with threshold 60 and
+  `label="University score"`, null score -> Unknown); model types aligned with the contract.
+  Route: delegated (writer trigger, 2+ non-trivial files).
+  - Model types aligned with the API contract: `University { id, frontiersOrganizationId, name,
+    score: number | null }` (`entities/university/model/types.ts`); `User { id, userName,
+    numberOfPublications, university: University }` (`entities/user/model/types.ts`). No prior
+    consumers existed (only placeholder pages), so no other code needed updating.
+  - `REVIEWER_MIN_UNIVERSITY_SCORE = 60` exported from `entities/university/model/reviewerPolicy.ts`
+    (documented as mirroring the backend's reviewer-eligibility policy), consumed by
+    `UniversityCard` as `ScoreBadge`'s `threshold`.
+  - FSD cross-import decision: `entities/user` embedding `University` and `UserSummary` embedding
+    `UniversityCard` is a same-layer (`entities`) cross-slice reference, which `pnpm steiger`
+    (`fsd/forbidden-imports`) rejects by default. Resolved with FSD's own sanctioned mechanism
+    (not a config relaxation): a cross-import public API file at
+    `entities/university/@x/user.ts` (the `@x` convention — re-exports only `University` and
+    `UniversityCard`, the two things `entities/user` is allowed to consume from
+    `entities/university`); `entities/user` imports from `@/entities/university/@x/user` instead
+    of the slice's normal `index.ts`. Verified this is the intended mechanism by reading
+    `@feature-sliced/steiger-plugin`'s `forbidden-imports` rule source (calls
+    `isCrossImportPublicApi`) and `@feature-sliced/filesystem`'s implementation, which recognizes
+    exactly a `<targetSlice>/@x/<consumingSlice>.ts` file as an explicit, scoped exception.
+  - `steiger.config.ts`: the `fsd/insignificant-slice` relaxation for `entities/**` is not
+    obsolete yet — verified by temporarily removing it and re-running `pnpm steiger`, which
+    reintroduced "no references" errors for both entity slices (no widget/page consumes
+    `UserSummary`/`UniversityCard` cross-layer yet; that lands in T8). Updated its comment to say
+    so explicitly and to note the original "pure type placeholder" rationale is now stale (both
+    slices have real `ui`/`model` segments), rather than removing it prematurely.
+  - Files: `entities/university/model/types.ts` (updated), `model/reviewerPolicy.ts` (+new),
+    `ui/UniversityCard.vue` (+new) + `.test.ts`, `@x/user.ts` (+new), `index.ts` (updated);
+    `entities/user/model/types.ts` (updated), `ui/UserSummary.vue` (+new) + `.test.ts`, `index.ts`
+    (updated).
+  - RED (`UniversityCard`, before implementation): `pnpm test -- UniversityCard` failed, `Failed
+    to resolve import "./UniversityCard.vue"`. GREEN: 1 file/5 tests passed (name + Frontiers
+    organization id render; null score -> "Unknown"; boundary score 60 passes (success color);
+    score 59 fails (error color); `label="University score"` accessible name).
+  - RED (`UserSummary`, before implementation): `pnpm test -- UserSummary` failed, `Failed to
+    resolve import "./UserSummary.vue"`. Intermediate RED during implementation: stubbing the
+    whole `navigator` global to test clipboard behavior broke Vuetify's `display` composable
+    (`Cannot read properties of undefined (reading 'match')`, since it reads `navigator.userAgent`
+    at `createVuetify()` time); fixed by stubbing only `navigator.clipboard` via
+    `Object.defineProperty` instead of replacing all of `navigator`. GREEN: 1 file/6 tests passed
+    (renders name/publications/monospace `<code>` user id; embeds `UniversityCard` for the
+    user's university; `actions` slot renders when provided and is absent otherwise; copy button
+    calls `navigator.clipboard.writeText` and announces "Copied." via `aria-live`; clipboard
+    unavailable announces a distinct message without throwing).
+  - Checks (from `apps/web`): `pnpm format` PASS (reformatted whitespace only) · `pnpm test` PASS
+    (20 files/125 tests) · `pnpm lint` PASS (0 errors/0 warnings) · `pnpm steiger` PASS (no
+    problems found, see `@x` cross-import and relaxation notes above) · `pnpm build` PASS
+    (`vue-tsc -b && vite build`, 0 errors) · `pnpm format:check` PASS.
+  - Size: ~394 authored lines across 10 files, close to the ~400-line heuristic — not split
+    artificially (two entity slices with real UI, tests and a cross-import public API file).
+  - Commit: pending user consent.
+- [ ] T6 API layer: `shared/api` parses RFC 9457 problem responses (JSON or empty body, e.g.
+  415) into a typed `ApiError` (`status`, `code`, `title`, `detail`, `fieldErrors`); typed
+  `registerUser()` / `inviteReviewer()` calls in the feature `api` segments on `httpClient`.
+- [ ] T7 Stateful composables in `features/*/model`: `useRegisterUser` / `useInviteReviewer`
+  (`idle`/`loading`/`success`/`error` via lookup maps), server `errors` mapped to form fields,
+  results appended as one `ResultAlert` per result (stateless contract from T2.3).
+- [ ] T8 Pages: `RegisterUserPage` (form + registered user/university + "Invite as reviewer"
+  link to `/invite?userId=<id>`) and `InviteReviewerPage` (form prefilled from the query + one
+  alert per invitation outcome with reasons). Update `AGENTS.md` (web usage notes).
+- [ ] T9 Delivery: web `Dockerfile` (multi-stage Node build + nginx, `VITE_API_URL` build
+  arg), `.env.example`, and the `web` service in `docker-compose.yml` once the API compose file
+  (`feat/use-cases`) is on `main`; README run instructions.
 
-## Pending the API contract (not started)
-- [ ] P1 API calls: `entities/*/api`, `registerUser()` and `inviteReviewer()` on `httpClient`.
-- [ ] P2 Stateful composables `useRegisterUser` / `useInviteReviewer` (`idle/loading/success/error`)
-  and backend validation errors mapped to fields.
-- [ ] P3 Contract-dependent details: id type (`Guid` vs `int`), `InviteReviewer` response shape,
-  web Docker image alongside the API.
+## API contract (from `feat/use-cases`, explored 2026-09-26)
+Defined by the infrastructure/use-cases work; the frontend consumes it as-is.
+- `POST /api/users` body `{ userName, universityName, numberOfPublications }` ->
+  `201 { userId: uuid, userName, numberOfPublications, university: { id: uuid,
+  frontiersOrganizationId: number, name, score: number | null } }`.
+- `POST /api/reviewers/invitations` body `{ userId: uuid }` -> `200 { userId, invited: boolean,
+  message, reasons: { code, message }[] }` for both eligible and ineligible outcomes.
+- Errors: RFC 9457 `application/problem+json` with a `code` extension; validation problems add
+  `errors: { <camelCaseField>: string[] }`. Codes: 400 `User.UserNameRequired`,
+  `User.UserNameTooLong`, `User.NegativeNumberOfPublications`,
+  `RegisterUser.UniversityNameRequired`, `RegisterUser.NumberOfPublicationsRequired`,
+  `Reviewer.UserIdRequired`, `Request.InvalidBody`; 404 `UniversityDirectory.NotFound`,
+  `Reviewer.UserNotFound`; 502 `UniversityDirectory.Unavailable` / `.InvalidEntry`; 500
+  `Server.UnexpectedError`. 415 has an empty body; in Production a malformed body may still
+  return a bare 400 (API task T4c pending), so the client must tolerate non-JSON errors.
+- Ids are UUID strings (deliberate deviation from the brief's `int UserId`).
+- CORS: POST + `Content-Type` only, origin `http://localhost:5173` (dev and compose).
+  API dev URL `http://localhost:5112`; compose publishes `127.0.0.1:8080`.
+- OpenAPI: `GET /openapi/v1.json`.
 
 ## Acceptance criteria / checks (from `apps/web`)
 - `pnpm build` 0 errors, `pnpm lint` 0 errors / 0 warnings, `pnpm steiger` clean, `pnpm test` green.
@@ -433,7 +550,26 @@ but no UI kit, theme or real components.
   green (`pnpm test` 14 files/80 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`,
   `pnpm format:check`). Committed as `3c8f7d8`; review unavailable (Gentle AI timeout) and
   declined for that candidate.
+- 2026-09-26: T4 implemented and verified (`RegisterUserForm` and `InviteReviewerForm` in
+  `features/*/ui`, API-free: local validators in `model`, typed `submit` events, `loading` and
+  `fieldErrors` props with a documented touch/submit validation-timing rule and a server-vs-local
+  field-error precedence rule). All checks green (`pnpm test` 20 files/125 tests, `pnpm lint`,
+  `pnpm steiger`, `pnpm build`, `pnpm format:check`). `steiger.config.ts`'s obsolete
+  `fsd/no-segmentless-slices` relaxation for `features/**` replaced with a narrower, still-needed
+  `fsd/insignificant-slice` one (removable once T8 wires the forms into a page). Commit pending
+  user consent.
+- 2026-09-26: T5 implemented and verified (`University`/`User` model types aligned with the API
+  contract; `REVIEWER_MIN_UNIVERSITY_SCORE` policy constant; `UniversityCard` and `UserSummary` in
+  `entities/*/ui`). `entities/user` embedding `University`/`UniversityCard` is a same-layer
+  cross-slice reference that `pnpm steiger` rejects by default; resolved with FSD's own `@x`
+  cross-import public API convention (`entities/university/@x/user.ts`) rather than a config
+  relaxation. Verified the `entities/**` `fsd/insignificant-slice` relaxation is still needed
+  (not yet obsolete) by temporarily removing it and observing the errors return; updated its
+  comment accordingly. All checks green (`pnpm test` 20 files/125 tests, `pnpm lint`,
+  `pnpm steiger`, `pnpm build`, `pnpm format:check`). Commit pending user consent.
 
 ## Next step
-T3 is implemented and verified; awaiting user consent to commit. Then T4 (`RegisterUserForm` and
-`InviteReviewerForm`, local validation, emit-only), once the user authorizes the next commit/task.
+T4 and T5 are implemented and verified; awaiting user consent to commit (separately — T4 touches
+`features/*`, T5 touches `entities/*`; both touch `steiger.config.ts`, in two separate hunks, one
+per task, see each task's evidence for which). Then T6 (API layer: RFC 9457 `ApiError` parsing,
+`registerUser()`/`inviteReviewer()`), once the user authorizes the next commit/task.

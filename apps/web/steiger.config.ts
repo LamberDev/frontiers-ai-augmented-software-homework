@@ -4,24 +4,29 @@ import { defineConfig } from 'steiger'
 export default defineConfig([
   ...fsd.configs.recommended,
   {
-    // Scaffolding-only relaxation: `entities/user` and `entities/university` are pure
-    // type placeholders (see apps/web/AGENTS.md) with no consumers yet, because this
-    // task ships structure only, no business/form code (out of scope per
-    // odd/tasks/monorepo-scaffold.md). They gain real references once the
-    // RegisterUser/InviteReviewer features consume them.
+    // Updated 2026-09-26 (T4/T5): `entities/user` and `entities/university` now have
+    // real `ui`/`model` segments (RegisterUserForm/InviteReviewerForm consume their
+    // types; UserSummary embeds UniversityCard), so the original "pure type
+    // placeholder" rationale for this relaxation no longer applies. It stays only
+    // because `fsd/insignificant-slice` counts cross-*layer* references, and no
+    // widget/page consumes `entities/user`/`entities/university` yet (that lands in T8,
+    // page composition) — removing this now would flag both slices as unreferenced.
+    // Remove once T8 wires `UserSummary/UniversityCard` into a page.
     files: ['./src/entities/**'],
     rules: {
       'fsd/insignificant-slice': 'off',
     },
   },
   {
-    // Scaffolding-only relaxation: `features/register-user` and
-    // `features/invite-reviewer` intentionally have no segments yet (no forms, no API
-    // calls in this task). They will gain a `ui`/`model` segment once that behavior is
-    // implemented; adding an empty placeholder segment now would just be fake code.
+    // Updated 2026-09-26 (T4): the original relaxation for `fsd/no-segmentless-slices`
+    // is obsolete — `features/register-user` and `features/invite-reviewer` now have
+    // real `ui`/`model` segments (RegisterUserForm/InviteReviewerForm) — and is removed.
+    // A new, narrower relaxation replaces it: `fsd/insignificant-slice` still fires for
+    // both feature slices because no widget/page consumes their forms yet (that lands
+    // in T8, page composition). Remove once T8 wires the forms into a page.
     files: ['./src/features/**'],
     rules: {
-      'fsd/no-segmentless-slices': 'off',
+      'fsd/insignificant-slice': 'off',
     },
   },
   {

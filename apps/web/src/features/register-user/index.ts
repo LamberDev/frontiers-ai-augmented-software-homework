@@ -1,7 +1,11 @@
 /**
  * Public API for the register-user feature.
- *
- * Scaffolding only: the RegisterUser form/submission behavior lands in a
- * later feature. No forms or API calls belong here yet.
  */
-export {}
+export { default as RegisterUserForm } from './ui/RegisterUserForm.vue'
+export { validateRegisterUser } from './model/validateRegisterUser'
+export type {
+  RegisterUserField,
+  RegisterUserFieldErrors,
+  RegisterUserFormValues,
+  RegisterUserInput,
+} from './model/types'
