@@ -91,6 +91,30 @@ public class InviteReviewerEndpointTests : IClassFixture<PeerReviewApiFactory>
         Assert.True(errors.TryGetProperty("userId", out _));
     }
 
+    [Fact]
+    public async Task PostInvitations_WithMissingUserId_ReturnsValidationProblemForUserIdField()
+    {
+        var content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        var response = await _client.PostAsync("/api/reviewers/invitations", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errors = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("errors");
+        Assert.True(errors.TryGetProperty("userId", out _));
+    }
+
+    [Fact]
+    public async Task PostInvitations_WithWrongJsonTypeForUserId_ReturnsValidationProblemForUserIdField()
+    {
+        var content = new StringContent("""{ "userId": 12345 }""", Encoding.UTF8, "application/json");
+
+        var response = await _client.PostAsync("/api/reviewers/invitations", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errors = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("errors");
+        Assert.True(errors.TryGetProperty("userId", out _));
+    }
+
     private async Task<Guid> SeedUserAsync(int numberOfPublications, decimal? universityScore)
     {
         using var scope = _factory.Services.CreateScope();

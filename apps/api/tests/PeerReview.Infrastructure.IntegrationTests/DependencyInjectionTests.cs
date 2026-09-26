@@ -16,6 +16,18 @@ namespace PeerReview.Infrastructure.IntegrationTests;
 
 public class DependencyInjectionTests
 {
+    // Known-valid values for the option not under test in a given theory, so each case isolates
+    // exactly one failing validation rule instead of relying on the class defaults staying valid.
+    private const string ValidBaseAddress = "https://organizations.test/";
+    private const string ValidTimeout = "00:00:10";
+
+    private const string InvalidBaseAddressMessage =
+        "FrontiersOrganizations:BaseAddress must be an absolute http or https URI.";
+    private const string BaseAddressWithQueryOrFragmentMessage =
+        "FrontiersOrganizations:BaseAddress must not contain a query string or fragment.";
+    private const string InvalidTimeoutMessage =
+        "FrontiersOrganizations:Timeout must be greater than zero and at most int.MaxValue milliseconds.";
+
     private static IConfiguration EmptyConfiguration => new ConfigurationBuilder().Build();
 
     [Fact]
@@ -90,16 +102,19 @@ public class DependencyInjectionTests
     }
 
     [Theory]
-    [InlineData("")]
-    [InlineData("organizations.test")]
-    [InlineData("ftp://organizations.test/")]
-    public void AddInfrastructure_FrontiersOptions_WithInvalidBaseAddress_ThrowsOptionsValidationExceptionOnResolve(
-        string baseAddress)
+    [InlineData("", InvalidBaseAddressMessage)]
+    [InlineData("organizations.test", InvalidBaseAddressMessage)]
+    [InlineData("ftp://organizations.test/", InvalidBaseAddressMessage)]
+    [InlineData("https://organizations.test/?x=1", BaseAddressWithQueryOrFragmentMessage)]
+    [InlineData("https://organizations.test/#frag", BaseAddressWithQueryOrFragmentMessage)]
+    public void AddInfrastructure_FrontiersOptions_WithInvalidBaseAddress_ThrowsOptionsValidationExceptionWithExpectedMessage(
+        string baseAddress, string expectedMessage)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["FrontiersOrganizations:BaseAddress"] = baseAddress,
+                ["FrontiersOrganizations:Timeout"] = ValidTimeout,
             })
             .Build();
 
@@ -111,19 +126,23 @@ public class DependencyInjectionTests
         // ValidateOnStart() only runs its check when a hosted IHostedService starts, which this
         // plain ServiceCollection does not have. Resolving IOptions<T>.Value runs the same
         // Validate() rules eagerly, which is enough to prove the validation itself is correct.
-        Assert.Throws<OptionsValidationException>(
+        var exception = Assert.Throws<OptionsValidationException>(
             () => provider.GetRequiredService<IOptions<FrontiersOrganizationsOptions>>().Value);
+
+        Assert.Contains(expectedMessage, exception.Failures);
     }
 
     [Theory]
     [InlineData("00:00:00")]
     [InlineData("-00:00:01")]
-    public void AddInfrastructure_FrontiersOptions_WithInvalidTimeout_ThrowsOptionsValidationExceptionOnResolve(
+    [InlineData("25.00:00:00")] // ~25 days > int.MaxValue milliseconds (~24.86 days).
+    public void AddInfrastructure_FrontiersOptions_WithInvalidTimeout_ThrowsOptionsValidationExceptionWithExpectedMessage(
         string timeout)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
+                ["FrontiersOrganizations:BaseAddress"] = ValidBaseAddress,
                 ["FrontiersOrganizations:Timeout"] = timeout,
             })
             .Build();
@@ -133,8 +152,34 @@ public class DependencyInjectionTests
 
         using var provider = services.BuildServiceProvider();
 
-        Assert.Throws<OptionsValidationException>(
+        var exception = Assert.Throws<OptionsValidationException>(
             () => provider.GetRequiredService<IOptions<FrontiersOrganizationsOptions>>().Value);
+
+        Assert.Contains(InvalidTimeoutMessage, exception.Failures);
+    }
+
+    [Fact]
+    public void AddInfrastructure_FrontiersOptions_WithInfiniteTimeout_ThrowsOptionsValidationExceptionWithExpectedMessage()
+    {
+        // Timeout.InfiniteTimeSpan disables HttpClient's timeout; an unbounded call to Frontiers
+        // makes no sense here, so it must be rejected the same as any other out-of-range value.
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["FrontiersOrganizations:BaseAddress"] = ValidBaseAddress,
+                ["FrontiersOrganizations:Timeout"] = System.Threading.Timeout.InfiniteTimeSpan.ToString(),
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddInfrastructure(configuration);
+
+        using var provider = services.BuildServiceProvider();
+
+        var exception = Assert.Throws<OptionsValidationException>(
+            () => provider.GetRequiredService<IOptions<FrontiersOrganizationsOptions>>().Value);
+
+        Assert.Contains(InvalidTimeoutMessage, exception.Failures);
     }
 
     [Fact]

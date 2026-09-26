@@ -81,24 +81,38 @@ Request/response records live in the Api layer next to their endpoint; handlers 
 Application result records, never domain entities, over HTTP.
 
 - `POST /api/users` — body `{ "userName": string, "universityName": string, "numberOfPublications": int }`.
+  `numberOfPublications` binds as `int?` in the request record so a missing or `null` value is
+  observable (a non-nullable `int` would silently bind to `0`); every other field validation stays
+  in the domain/handler.
   - `201 Created` (no `Location` header; there is no `GET` endpoint) —
     `{ userId, userName, numberOfPublications, university: { id, frontiersOrganizationId, name, score } }`.
   - `400` `ValidationProblem` — `errors` keyed by camelCase request field (`userName`,
-    `universityName`, `numberOfPublications`).
+    `universityName`, `numberOfPublications`), including a missing/`null` `numberOfPublications`
+    (checked in the endpoint before the handler runs, returned alone without accumulating with
+    handler validation).
+  - `400` `ProblemDetails` — a malformed or type-mismatched JSON body (e.g. a non-JSON payload, or
+    `"numberOfPublications": "abc"`) fails model binding before the handler runs and is caught by
+    the top-level exception handler as a `BadHttpRequestException`; see below.
   - `404` `ProblemDetails` — university not found in Frontiers (`UniversityDirectory.NotFound`).
   - `502` `ProblemDetails` — Frontiers unavailable or returned invalid data
     (`UniversityDirectory.Unavailable` / `UniversityDirectory.InvalidEntry`).
 - `POST /api/reviewers/invitations` — body `{ "userId": "<guid>" }`.
   - `200 OK` — `{ userId, invited, message, reasons: [ { code, message } ] }` (`invited: false` is
     still `200`, with the ineligibility reasons in evaluation order).
-  - `400` `ValidationProblem` (`errors.userId`) — empty Guid, missing/non-Guid `userId`, or a
-    malformed body (the request body is read manually so all three fail the same way).
+  - `400` `ValidationProblem` (`errors.userId`) — empty Guid, missing/non-Guid/wrong-type `userId`,
+    or a malformed body (the request body is read manually so all of these fail the same way).
   - `404` `ProblemDetails` — unknown user id.
 - Every error is an RFC 9457 `ProblemDetails`/`ValidationProblem` (`AddProblemDetails()`), including
-  framework body-binding failures and unhandled exceptions (a single top-level
-  `app.UseExceptionHandler(...)` in `Program.cs` always returns a generic `500`, never the
-  exception's message or stack trace). Every mapped error carries the stable Application/Domain
-  error code as the `code` extension.
+  framework body-binding failures and unhandled exceptions. A single top-level
+  `app.UseExceptionHandler(...)` in `Program.cs`, delegating to
+  `PeerReview.Api.SharedKernel.Http.ExceptionHttpExtensions.WriteProblemAsync`, maps a
+  `BadHttpRequestException` (thrown by minimal API model binding on a malformed or type-mismatched
+  JSON body, before any endpoint handler runs) to its own `400` `ProblemDetails` with a generic
+  `detail` ("The request body is invalid."); every other exception stays a generic `500`. Neither
+  case ever leaks the exception's message or stack trace. Every error carries a stable `code`
+  extension: the Application/Domain error code for mapped results, `Request.InvalidBody` for a
+  body-binding failure, `RegisterUser.NumberOfPublicationsRequired` for a missing
+  `numberOfPublications`, and `Server.UnexpectedError` for an unhandled exception.
 - Result -> HTTP mapping lives in `PeerReview.Api.SharedKernel.Http.ResultHttpExtensions`
   (`Result<T>.ToHttpResult(...)`). `SharedKernel/Http` mirrors the Domain's own `SharedKernel`
   naming: the mapping is genuinely cross-cutting (every endpoint uses it), not owned by one

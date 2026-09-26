@@ -1,4 +1,5 @@
 using PeerReview.Api.Reviewers.InviteReviewer;
+using PeerReview.Api.SharedKernel.Http;
 using PeerReview.Api.Users.RegisterUser;
 using PeerReview.Application;
 using PeerReview.Infrastructure;
@@ -23,14 +24,11 @@ builder.Services.AddCors(options => options.AddPolicy(FrontendCorsPolicy, policy
 
 var app = builder.Build();
 
-// A single top-level exception handler keeps every unhandled failure a generic RFC 9457
-// ProblemDetails response, in every environment, without leaking exception details.
-app.UseExceptionHandler(exceptionApp => exceptionApp.Run(async context =>
-{
-    await Results.Problem(
-        title: "An unexpected error occurred.",
-        statusCode: StatusCodes.Status500InternalServerError).ExecuteAsync(context);
-}));
+// A single top-level exception handler keeps every unhandled failure an RFC 9457 ProblemDetails
+// response, in every environment, without leaking exception details: a BadHttpRequestException
+// (malformed or type-mismatched JSON body) maps to its own 400, everything else stays a generic
+// 500. See ExceptionHttpExtensions.WriteProblemAsync.
+app.UseExceptionHandler(exceptionApp => exceptionApp.Run(ExceptionHttpExtensions.WriteProblemAsync));
 
 app.UseCors(FrontendCorsPolicy);
 

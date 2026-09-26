@@ -185,13 +185,45 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
     into 502 and the existing 404 test caught it).
   - ~868 authored lines (tests are about half); larger than the 400 heuristic because the
     contract, mapping and its integration tests form one coherent unit.
-- [ ] T2c T2b review follow-ups (user accepted, 2026-09-26):
+  - Commit (user consented): `ac915bf`. RDD: assess (base `3f6b01d`) medium,
+    `slice_budget_reached` (910 lines); consent granted; one lens (`review-reliability`);
+    approved and acknowledged (lineage `review-192ee494216db89d`, authority burned). Reviewed
+    boundary advances to `ac915bf`. Advisory findings (non-blocking): malformed body on
+    `POST /api/users` likely becomes 500 (the exception handler swallows
+    `BadHttpRequestException`) instead of the documented 400 (WARNING); missing
+    `numberOfPublications` binds to 0 and registers instead of 400 (WARNING); generic 500 handler
+    untested (SUGGESTION); Conflict 409 and non-directory Failure 500 mappings untested
+    (SUGGESTION).
+- [x] T2c T2b review follow-ups (user accepted, 2026-09-26). Route: delegated (writer).
+  - Evidence: RED with `dotnet test tests/PeerReview.Infrastructure.IntegrationTests -c Release`:
+    6 failed / 27 passed (message assertions, query/fragment and oversized-timeout cases). GREEN:
+    136 passed / 0 failed (62 + 17 + 33 + 24), re-run by the parent. Startup test meaningfulness:
+    with `.ValidateOnStart()` commented out it failed ("No exception was thrown"); restored, it
+    passes. Format clean, build 0 warnings / 0 errors.
+  - Parent correction: shortened the two new validation messages to one short sentence each (repo
+    message convention); the rationale stays in code comments.
   - Options tests set a valid counterpart value and assert the failing rule's message.
   - `Timeout` rule matches `HttpClient`: > 0 and <= `int.MaxValue` ms (`InfiniteTimeSpan` stays
     rejected: an unbounded upstream call makes no sense here).
   - Host-level test in `PeerReview.Api.IntegrationTests`: invalid `FrontiersOrganizations`
     configuration makes startup fail (`ValidateOnStart`).
   - `BaseAddress` with a query or fragment is rejected by validation.
+- [x] T4b T4 review follow-ups (user accepted, 2026-09-26). Route: delegated (writer).
+  - Evidence: RED with `dotnet test tests/PeerReview.Api.IntegrationTests -c Release`: 4 failed /
+    29 passed — malformed JSON and wrong JSON type on `/api/users` got 500, missing
+    `numberOfPublications` got 201 (bound to 0), null `numberOfPublications` got 500. Invitations
+    body cases, the generic 500 test and the 409/500 mapping unit tests passed immediately
+    (behavior already correct; tests only). GREEN: 145 passed / 0 failed (62 + 17 + 33 + 33),
+    re-run by the parent. Format clean, build 0 warnings / 0 errors. Smoke: malformed body 400 on
+    both endpoints, missing `numberOfPublications` 400 keyed by the field.
+  - Parent correction: the two new problems lacked the contract's `code` extension; added
+    `Request.InvalidBody` / `Server.UnexpectedError` (exception handler) and
+    `RegisterUser.NumberOfPublicationsRequired`, asserted in tests (RED observed by removing the
+    extension: `KeyNotFoundException` on `code`), documented in `apps/api/AGENTS.md`.
+  - Malformed or non-JSON body returns 400 ProblemDetails (not 500) on both endpoints.
+  - Missing or null `numberOfPublications` returns 400 keyed by `numberOfPublications`.
+  - Generic 500 handler tested: status, ProblemDetails shape, no exception details leaked.
+  - Result -> HTTP mapping tests for Conflict 409 and non-directory Failure 500.
 - [ ] T5 Docker: multi-stage `apps/api/Dockerfile`, `.dockerignore`, root `docker-compose.yml`
   with the api service (web service added by `frontend-ui`); verify `docker build` and `/health`.
 - [ ] T6 README: build/run (local and Docker), API contract summary, deviations (Guid ids, null
@@ -209,4 +241,6 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
 - T1 done, committed and reviewed (approved). T1b committed (`1c47f76`). T2 committed (`9d4c79a`),
   reviewed (approved). T3 committed (`48b61d9`; RDD
   assess base `9d4c79a`: medium, `under_budget`, 258 lines, pending in the slice). T2b committed
-  (`3f6b01d`), reviewed (approved). T4 committed (user consented). Next: T2c, then T5.
+  (`3f6b01d`), reviewed (approved). T4 committed (`ac915bf`), reviewed (approved). T2c committed
+  (`9259f86`; RDD assess base `ac915bf`: medium, `under_budget`, 154 lines, pending in the slice).
+  T4b done (commit pending user consent). Next: T5.
