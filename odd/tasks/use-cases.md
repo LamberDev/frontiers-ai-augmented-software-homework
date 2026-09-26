@@ -113,9 +113,29 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   - Parent correction: the writer's DI test read the private `_httpClient` field by reflection;
     replaced by a behavioral test that swaps the primary handler for a fake and asserts the
     request goes to the configured base address (test strengthening, passed immediately).
-- [ ] T3 `InviteReviewer` use case (Application): `InviteReviewerCommand(Guid UserId)`, handler
+  - Commit (user consented): `9d4c79a`. RDD: assess (base `56c2d5d`, slice T1b+T2) medium,
+    `slice_budget_reached` (502 lines); consent granted; one lens (`review-reliability`);
+    approved and acknowledged (lineage `review-d20d9d803901729f`, authority burned). Reviewed
+    boundary advances to `9d4c79a`. Advisory findings (non-blocking): null first array element
+    throws `NullReferenceException` instead of `InvalidEntry` (WARNING); options not validated
+    (bad `BaseAddress`/`Timeout` fail lazily on first request; a base address without trailing
+    slash drops its last segment) (WARNING); configured `Timeout` not asserted (SUGGESTION).
+- [ ] T2b T2 review follow-ups (user accepted, 2026-09-26), after T3:
+  - R3 null-suggestion-element: a null first array element maps to `InvalidEntry` (test).
+  - R3 unvalidated-client-options: validate `FrontiersOrganizationsOptions` at startup
+    (`ValidateOnStart`: absolute http(s) `BaseAddress`, `Timeout` > 0); normalize a missing
+    trailing slash on `BaseAddress` (tests).
+  - R3 timeout-binding: assert the configured `Timeout` reaches the typed client (test).
+- [x] T3 `InviteReviewer` use case (Application): `InviteReviewerCommand(Guid UserId)`, handler
   loading the user with university, applying `ReviewerEligibilityPolicy`, returning invited flag,
-  message and reasons; NotFound for unknown user; tests with fakes.
+  message and reasons; NotFound for unknown user; tests with fakes. Route: delegated (writer).
+  - Evidence: RED with `dotnet test PeerReview.slnx -c Release`: Application 7 failed / 10
+    passed, the 7 new tests failing with `System.NotImplementedException` from
+    `InviteReviewerHandler.HandleAsync`. GREEN: 100 passed / 0 failed (62 + 17 + 21), re-run by
+    the parent. Format clean, build 0 warnings / 0 errors, dependency rule OK.
+  - `ReviewerInvitation(UserId, Invited, Message, Reasons)`; `Guid.Empty` ->
+    `Reviewer.UserIdRequired` (Validation, repository not called); unknown user ->
+    `Reviewer.UserNotFound` (NotFound); read-only, no save.
 - [ ] T4 Endpoints and contract (Api): `POST /api/users` and `POST /api/reviewers/invitations`,
   request/response records, Result -> HTTP mapping, OpenAPI, CORS for the web origin from
   configuration; new `PeerReview.Api.IntegrationTests` with `WebApplicationFactory` and a fake
@@ -134,5 +154,5 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   usings in Domain/Application).
 
 ## Progress
-- T1 done, committed and reviewed (approved). T1b committed (`1c47f76`). T2 done (commit pending
-  user consent). Next: T3.
+- T1 done, committed and reviewed (approved). T1b committed (`1c47f76`). T2 committed (`9d4c79a`),
+  reviewed (approved). T3 done (commit pending user consent). Next: T2b, then T4.
