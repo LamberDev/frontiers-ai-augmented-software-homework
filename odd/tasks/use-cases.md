@@ -314,5 +314,12 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   T4c (244 lines, `under_budget`) is pending in the slice with T6.
 - Final suite: 152 passed / 0 failed; format clean; build 0 warnings / 0 errors; container
   verified (Quick start commands run verbatim).
-- Next: review of the last slice if due, then push and stacked-to-main PRs (authorized
-  2026-09-26); merges need the user's yes.
+- Last slice (T4c+T6, 388 lines, `under_budget`): review requested deliberately because no later
+  commit would reach the budget; consent granted (user authority); one lens; approved and
+  acknowledged (lineage `review-f9463b5af645ed3e`). Advisory findings, open as follow-ups (T4d
+  candidate, user decision): `ThrowOnBadRequest` makes client body errors log as unhandled
+  exceptions at Error level (WARNING); fallback descriptor titles any unmapped status "Bad
+  Request" and does not clamp non-4xx (SUGGESTION); the 415 test pins the framework's empty body
+  (SUGGESTION).
+- Delivery: stacked-to-main PRs, one per reviewed slice: 01 T1, 02 T1b+T2, 03 T3+T2b, 04 T4,
+  05 T2c+T4b, 06 T5+T5b, 07 T4c+T6. Merges need the user's yes.
