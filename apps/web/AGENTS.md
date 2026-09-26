@@ -46,7 +46,32 @@ Slice names mirror the backend's business use cases/entities: `register-user`,
   `shared/config/apiUrl.ts`), which resolves `VITE_API_URL` lazily on first use and throws a
   descriptive error if it's missing. Never read `import.meta.env.VITE_API_URL` directly outside
   `shared/config`.
-- Copy `.env.example` to `.env` and set `VITE_API_URL` before running `dev`/`test`.
+- Copy `.env.example` to `.env` and set `VITE_API_URL` before running `dev`/`test`. In
+  development, `VITE_API_URL` points at `http://localhost:5112`; the API's CORS policy allows
+  requests from `http://localhost:5173` (this app's default `vite dev` origin) only.
+
+## Pages: composing features/entities
+
+A page (`pages/*/ui/*Page.vue`) is a thin composition layer, never business logic itself:
+
+- It binds one feature's stateful composable (`useRegisterUser`/`useInviteReviewer`) to that
+  feature's form (`loading`, `fieldErrors` props, `@submit` -> `submit`).
+- It renders the composable's `results` as a **results-list**: one `ResultAlert` per
+  `ResultAlertEntry`, `v-for`-keyed by the entry's own `id` (never the array index), `closable`,
+  `@close="dismiss(entry.id)"`. This list lives in its own labelled region
+  (`<section aria-label="Results">`) so assistive tech can find `ResultAlert`'s `role`/`aria-live`
+  announcements independently of the surrounding form. See `ResultAlert.vue`'s doc comment for the
+  stateless-visibility contract this pattern relies on (the page/composable owns the list; the
+  alert never hides or reopens itself).
+- After a successful result it composes in the relevant `entities/*/ui` view (e.g.
+  `RegisterUserPage` renders `UserSummary` for `lastUser`), passing page-level navigation (e.g. an
+  "Invite as reviewer" link, `GlassButton`'s `to` prop) through that view's `actions` slot — pages
+  own navigation and cross-feature composition; entities/features never import `vue-router`
+  themselves for this.
+- A page reads its own route query (`useRoute()`) to prefill a form (e.g.
+  `InviteReviewerPage`'s `initialUserId` from `?userId=`), narrowing a possibly-array/`null` query
+  value down to a plain string itself before passing it down.
+- Exactly one `h1` per page.
 
 ## Vue version
 

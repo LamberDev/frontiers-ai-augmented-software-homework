@@ -4,26 +4,30 @@ import { defineConfig } from 'steiger'
 export default defineConfig([
   ...fsd.configs.recommended,
   {
-    // Updated 2026-09-26 (T4/T5): `entities/user` and `entities/university` now have
-    // real `ui`/`model` segments (RegisterUserForm/InviteReviewerForm consume their
-    // types; UserSummary embeds UniversityCard), so the original "pure type
-    // placeholder" rationale for this relaxation no longer applies. It stays only
-    // because `fsd/insignificant-slice` counts cross-*layer* references, and no
-    // widget/page consumes `entities/user`/`entities/university` yet (that lands in T8,
-    // page composition) — removing this now would flag both slices as unreferenced.
-    // Remove once T8 wires `UserSummary/UniversityCard` into a page.
+    // Updated 2026-09-26 (T8): `entities/user`/`entities/university` are now both
+    // referenced by real UI (`RegisterUserPage` renders `UserSummary`, which embeds
+    // `UniversityCard`), but `fsd/insignificant-slice` still flags each with "only one
+    // reference ... consider merging" — this app has exactly one page presenting a
+    // `User`, and `entities/university` is only ever reached through `entities/user`
+    // (its `@x` cross-import, see `entities/university/@x/user.ts`), never referenced
+    // directly by a widget/page. Kept as a deliberate, permanent relaxation rather than
+    // folding these entities into `pages/register-user`: they are a distinct
+    // atomic-design level (see the mapping table in `odd/tasks/frontend-ui.md`) with
+    // their own model/UI/tests, independent of this app's current page count.
     files: ['./src/entities/**'],
     rules: {
       'fsd/insignificant-slice': 'off',
     },
   },
   {
-    // Updated 2026-09-26 (T4): the original relaxation for `fsd/no-segmentless-slices`
-    // is obsolete — `features/register-user` and `features/invite-reviewer` now have
-    // real `ui`/`model` segments (RegisterUserForm/InviteReviewerForm) — and is removed.
-    // A new, narrower relaxation replaces it: `fsd/insignificant-slice` still fires for
-    // both feature slices because no widget/page consumes their forms yet (that lands
-    // in T8, page composition). Remove once T8 wires the forms into a page.
+    // Updated 2026-09-26 (T8): both feature slices are now wired into their page
+    // (`RegisterUserPage`/`InviteReviewerPage`), but `fsd/insignificant-slice` still
+    // flags each as "only one reference ... consider merging" because this app has
+    // exactly one page per form. Kept as a deliberate, permanent relaxation rather
+    // than folding the forms into their pages: `RegisterUserForm`/`InviteReviewerForm`
+    // are a distinct atomic-design level (organisms, per the mapping table in
+    // `odd/tasks/frontend-ui.md`) with their own `model`/`api` segments and unit tests,
+    // independent of how many pages currently render them.
     files: ['./src/features/**'],
     rules: {
       'fsd/insignificant-slice': 'off',

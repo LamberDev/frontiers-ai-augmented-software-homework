@@ -516,7 +516,7 @@ but no UI kit, theme or real components.
   - Checks (from `apps/web`): all covered by T6/T7's full-suite run below (`pnpm test` 26
     files/157 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`, `pnpm format:check`), run once
     against the combined working tree rather than repeated per task.
-  - Commit: pending (see the Next step note for how this task's files split from T6/T7's).
+  - Commit: `e677e0b` — fix(web): harden user summary copy and publications validation.
 - [x] T6 API layer: `shared/api` parses RFC 9457 problem responses (JSON or empty body, e.g.
   415) into a typed `ApiError` (`status`, `code`, `title`, `detail`, `fieldErrors`); typed
   `registerUser()` / `inviteReviewer()` calls in the feature `api` segments on `httpClient`.
@@ -568,7 +568,7 @@ but no UI kit, theme or real components.
     env var uncached on every call) — confirmed stable across 3 consecutive full-suite runs
     afterwards (157/157 each time).
   - Checks: see T7 below (verified together against the combined working tree).
-  - Commit: pending (see the Next step note for how this task's files split from T5.1/T7's).
+  - Commit: `c9874a0` — feat(web): add typed api client for register user and invite reviewer.
 - [x] T7 Stateful composables in `features/*/model`: `useRegisterUser` / `useInviteReviewer`
   (`idle`/`loading`/`success`/`error` via lookup maps), server `errors` mapped to form fields,
   results appended as one `ResultAlert` per result (stateless contract from T2.3). Route:
@@ -623,10 +623,138 @@ but no UI kit, theme or real components.
     adding a `rejects.toBeInstanceOf(ApiError)` assertion alongside each, which also strengthens
     those tests) · `pnpm steiger` PASS (no problems found) · `pnpm build` PASS
     (`vue-tsc -b && vite build`, 0 errors) · `pnpm format:check` PASS.
+  - Commit: `dc2bedd` — feat(web): add register user and invite reviewer composables.
+  - Review of `aa3da40..dc2bedd` (covers T5.1, T6 and T7): RDD medium, 1629 lines, reliability
+    lens approved and acknowledged (lineage `review-2e9739922aab68a0`); advisories accepted as
+    mandatory follow-ups, recorded as T7.1 below.
+- [x] T7.1 Review follow-ups (from the `aa3da40..dc2bedd` review above): `requestJson` converts an
+  empty/non-JSON 2xx response body into an `ApiError` (`RESPONSE_INVALID_BODY_CODE`) instead of
+  letting `response.json()` throw a raw `SyntaxError`; `useRegisterUser`/`useInviteReviewer` reset
+  `fieldErrors` on every submit and only show "Please fix the highlighted fields." when at least
+  one field error survives narrowing to the form's known fields; `inviteReviewer` validates/
+  normalizes the raw `InvitationResult` body (`invited: boolean`, `message: string`,
+  `reasons: { code, message }[]`) and rejects with `ApiError` otherwise; `requestJson`'s problem-body
+  parsing rejects a JSON array as a problem body and keeps only `errors` entries whose value is an
+  array of strings. Route: delegated (writer trigger, 2+ non-trivial files).
+  - Evidence:
+    1. `requestJson` empty/malformed 2xx body (`shared/api/ApiError.ts` +
+       `RESPONSE_INVALID_BODY_CODE`, `shared/api/requestJson.ts`, `.test.ts`): RED —
+       temporarily reverted the `try`/`catch` around `response.json()` and re-ran
+       `pnpm test -- requestJson`: 2/12 failed (`expected SyntaxError ... to be an instance of
+       ApiError`) for a `204` empty body and a `200` non-JSON body. Fix: wraps
+       `await response.json()` in a `try`/`catch`, rejecting with
+       `new ApiError({ status: response.status, code: RESPONSE_INVALID_BODY_CODE, detail })` on
+       failure. GREEN: `pnpm test -- requestJson` 12/12 passed.
+    2. Stale field errors (`features/register-user/model/useRegisterUser.ts`,
+       `features/invite-reviewer/model/useInviteReviewer.ts` + `.test.ts` each): RED —
+       `pnpm test -- useRegisterUser useInviteReviewer` — 4/19 failed: a field error from a first
+       failed submit survived into a second submit that failed for an unrelated (network) reason,
+       and unknown-only server field-error keys still showed the generic "Please fix the
+       highlighted fields." message with nothing actually highlighted. Fix: `fieldErrors.value = {}`
+       is reset at the very start of every `submit()` (the simplest deterministic rule — see the
+       task instructions); the "highlighted fields" branch is now gated on the *narrowed* field
+       errors being non-empty (`toRegisterUserFieldErrors`/`toInviteReviewerFieldErrors`'s result),
+       falling through to the code/default friendly-title message otherwise. `useInviteReviewer`'s
+       success branch was also restructured to build the `ResultAlertEntry` before assigning
+       `lastInvitation`/`status`/`results` together (documented as never observing a half-processed
+       result, since `apiCall` itself now only ever resolves with a fully-validated result — see
+       item 3). GREEN: `pnpm test -- useRegisterUser useInviteReviewer` 19/19 passed.
+    3. Unvalidated `InvitationResult` (`features/invite-reviewer/api/inviteReviewer.ts` +
+       `.test.ts`): RED — added 3 tests (missing `invited`, non-array `reasons`, a reason with a
+       non-string `message`) against the unchanged mapper: `pnpm test -- inviteReviewer.test` —
+       3/21 failed (`promise resolved ... instead of rejecting`, i.e. the malformed body passed
+       through as if it were a valid result). Fix: `isInvitationResult`/`isInvitationReason` type
+       guards validate the raw (`unknown`-typed) response body; `inviteReviewer()` now calls
+       `requestJson<unknown>(...)` and passes the result through `toInvitationResult`, which throws
+       `new ApiError({ status: 200, code: RESPONSE_INVALID_BODY_CODE })` on any shape mismatch.
+       GREEN: `pnpm test -- inviteReviewer.test` 21/21 passed.
+    4. Problem-body shape (`shared/api/requestJson.ts` + `.test.ts`): RED — added a "JSON array
+       body" test (already passed incidentally, since array `.code`/`.errors` are `undefined`) and
+       a "mixed valid/invalid `errors` entries" test: `pnpm test -- requestJson` — 1/12 failed
+       (`error.fieldErrors` included a non-array string, an array of numbers and a mixed array
+       verbatim instead of only the one genuinely string-array entry). Fix:
+       `isProblemDetailsBody` now also rejects `Array.isArray(value)`; a new
+       `normalizeFieldErrors(errors)` keeps only entries whose value passes `isStringArray`
+       (`Array.isArray` + every element `typeof === 'string'`), used in place of the previous
+       `body.errors ?? {}`. GREEN: `pnpm test -- requestJson` 12/12 passed.
+  - Checks (from `apps/web`): `pnpm format` PASS (no changes needed) · `pnpm test` PASS (26
+    files/168 tests, up from 157 before this task — T8 below adds the further page test files) ·
+    `pnpm lint` PASS (0 errors/0 warnings) · `pnpm steiger` PASS (no problems found) · `pnpm build`
+    PASS (`vue-tsc -b && vite build`, 0 errors) · `pnpm format:check` PASS.
+  - Size: ~470 authored changed lines across 10 files (`ApiError.ts`, `requestJson.ts`
+    + `.test.ts`, `index.ts`, `useRegisterUser.ts` + `.test.ts`, `useInviteReviewer.ts` +
+    `.test.ts`, `inviteReviewer.ts` + `.test.ts`), above the ~400-line planning heuristic — four
+    distinct review findings across `shared/api` and both features, each with its own RED/GREEN
+    test evidence, not split artificially since they are all mandatory follow-ups from the same
+    review.
   - Commit: pending.
-- [ ] T8 Pages: `RegisterUserPage` (form + registered user/university + "Invite as reviewer"
+- [x] T8 Pages: `RegisterUserPage` (form + registered user/university + "Invite as reviewer"
   link to `/invite?userId=<id>`) and `InviteReviewerPage` (form prefilled from the query + one
   alert per invitation outcome with reasons). Update `AGENTS.md` (web usage notes).
+  Route: delegated (writer trigger, 2+ non-trivial files).
+  - `RegisterUserPage.vue`: binds `RegisterUserForm` to `useRegisterUser` (`loading`,
+    `fieldErrors`, `@submit="submit"`); a labelled `<section aria-label="Results">` renders one
+    `ResultAlert` per `results` entry (`v-for` keyed by `entry.id`, `closable`,
+    `@close="dismiss(entry.id)"`); on `lastUser`, renders `UserSummary` with an `actions` slot
+    containing a `GlassButton` (new `to` prop, see below) linking to
+    `{ name: 'invite-reviewer', query: { userId: lastUser.id } }`.
+  - `InviteReviewerPage.vue`: same results-list pattern; `InviteReviewerForm`'s `initialUserId` is
+    read from `route.query.userId`, narrowed to `typeof value === 'string' ? value : undefined` so
+    a missing or repeated (array) query value is ignored rather than passed through untyped.
+  - `GlassButton`'s `to` prop (`shared/ui/atoms/GlassButton/GlassButton.vue` + `.test.ts`): a
+    typed `RouteLocationRaw` prop forwarded to Vuetify's own `VBtn` `to` (which already renders a
+    router link when set — confirmed by a characterization test that the untyped fallthrough
+    already worked via Vue's attrs-to-component-prop merging, before the prop was declared
+    explicitly); made explicit instead of relying on that implicit fallthrough, for type safety and
+    documentation. Chosen over a separate `GlassLinkButton` atom since it needed only a few lines
+    and no new component.
+  - `steiger.config.ts`: removed the (by-then-obsolete) "temporary until T8" relaxations for
+    `entities/**`/`features/**` and re-added narrower, permanent ones once `pnpm steiger` was
+    re-run against the wired-in pages — `fsd/insignificant-slice` still flags every entity/feature
+    slice with "only one reference ... consider merging" (this app has exactly one page per
+    form/entity pairing), which is a structural property of this two-page app, not a temporary
+    gap; the relaxation comments were rewritten to say so honestly instead of "remove once T8
+    lands." Also fixed two new `fsd/no-public-api-sidestep` findings in the page tests (see below).
+  - Test/mocking design: `RegisterUserPage`/`InviteReviewerPage` call their composable with no
+    options (pages don't accept DI), so their tests mock the feature's internal api module
+    directly with `vi.mock('@/features/.../api/registerUser')` (an automock — the module path is a
+    plain string argument, not an import, so it does not itself sidestep the slice's public API);
+    the mocked function is then imported and asserted on through the slice's public barrel
+    (`import { registerUser } from '@/features/register-user'`) rather than the deep api path, so
+    the test file's own import statement stays within the public API and `fsd/no-public-api-sidestep`
+    stays clean. `apps/web/test/support/findFieldInput.ts` (new) centralizes the
+    label-to-native-`<input>` lookup previously duplicated in
+    `RegisterUserForm.test.ts`/`InviteReviewerForm.test.ts`, reused by both new page test files.
+  - Files: `pages/register-user/ui/RegisterUserPage.vue` (rewritten) + new `.test.ts`,
+    `pages/invite-reviewer/ui/InviteReviewerPage.vue` (rewritten) + new `.test.ts`,
+    `shared/ui/atoms/GlassButton/GlassButton.vue` (+ `to` prop) + `.test.ts`, `steiger.config.ts`,
+    `test/support/findFieldInput.ts` (+new), `apps/web/AGENTS.md`.
+  - RED (`GlassButton`, before the explicit `to` prop): added a "to" prop test against the
+    unchanged component: `pnpm test -- GlassButton` passed already (14/14) — the untyped attrs
+    fallthrough already rendered a router link, since `VBtn` declares its own `to` prop; the prop
+    was still declared explicitly afterwards (type safety/docs), re-verified GREEN 14/14.
+  - RED (`RegisterUserPage`, before implementation — characterization on the finished page):
+    temporarily forced `v-if="false"` on the `UserSummary`: `pnpm test -- RegisterUserPage` 3/4
+    passed, 1 failed (`expected ... to contain 'User summary'`). Restored: GREEN 4/4 (mounted
+    heading/results region; success shows the alert, `UserSummary` and the invite link with
+    `href="/invite?userId=<id>"`; server field errors show on the form and suppress
+    `UserSummary`; closing one alert removes only it).
+  - RED (`InviteReviewerPage`, before implementation — characterization): forced
+    `initialUserId` to always resolve `undefined`: `pnpm test -- InviteReviewerPage` 3/6 passed, 3
+    failed (prefill test, and both success-outcome tests, since without a prefilled userId the
+    empty-field validation error blocked the emit). Restored: GREEN 6/6 (heading/empty form; query
+    prefill; a repeated/array `userId` query is ignored; `invited: true` success alert;
+    `invited: false` warning alert with `reasons` as items; server field error shown).
+  - Checks (from `apps/web`): `pnpm format` PASS (no changes needed) · `pnpm test` PASS (28
+    files/180 tests, up from 26 files/168 before this task) · `pnpm lint` PASS (0 errors/0
+    warnings) · `pnpm steiger` PASS (no problems found, see the relaxation notes above) ·
+    `pnpm build` PASS (`vue-tsc -b && vite build`, 0 errors) · `pnpm format:check` PASS.
+  - Size: ~523 authored changed lines across 9 files (2 rewritten pages + 2 new page test files,
+    `GlassButton.vue` + `.test.ts`, `steiger.config.ts`, a new test helper, `AGENTS.md`), above the
+    ~400-line planning heuristic — two full page compositions with BDD component-level test
+    coverage (including two characterization RED passes) plus their steiger/docs follow-through,
+    not split artificially.
+  - Commit: pending.
 - [ ] T9 Delivery: web `Dockerfile` (multi-stage Node build + nginx, `VITE_API_URL` build
   arg), `.env.example`, and the `web` service in `docker-compose.yml` once the API compose file
   (`feat/use-cases`) is on `main`; README run instructions.
@@ -713,21 +841,43 @@ Defined by the infrastructure/use-cases work; the frontend consumes it as-is.
   `UserSummary`'s clipboard copy distinguishes a rejected promise from an unsupported one and
   clears its live region before each attempt so a repeated outcome re-announces;
   `RegisterUserForm`'s submit guards its numeric payload field at runtime instead of an `as`
-  cast). Verified together with T6/T7 in one full-suite run (checks recorded under T7); not yet
-  committed — see the Next step note on how the three tasks' changes are separable.
+  cast). Verified together with T6/T7 in one full-suite run (checks recorded under T7).
+  Committed as `e677e0b`.
 - 2026-09-26: T6 implemented and verified (`shared/api`'s `ApiError` class and `requestJson`
   JSON helper — RFC 9457 problem parsing tolerant of an empty/non-JSON body, network failures and
   missing `VITE_API_URL` all surfacing as `ApiError`; `entities/user`'s `toUser` DTO mapper;
   `registerUser()`/`inviteReviewer()` in each feature's `api` segment). Verified together with
-  T5.1/T7 (checks recorded under T7); not yet committed.
+  T5.1/T7 (checks recorded under T7). Committed as `c9874a0`.
 - 2026-09-26: T7 implemented and verified (`useRegisterUser`/`useInviteReviewer` stateful
   composables in `features/*/model`, a shared `ResultAlertEntry` type in `shared/ui`, DI-friendly
   api parameters). All checks green (`pnpm test` 26 files/157 tests — confirmed stable across 3
   consecutive full-suite runs after fixing an unrelated per-test-transform perf issue in
   `registerUser.test.ts`, see its evidence — `pnpm lint`, `pnpm steiger`, `pnpm build`,
+  `pnpm format:check`). Committed as `dc2bedd`. Review of `aa3da40..dc2bedd` (covers T5.1, T6,
+  T7): RDD medium, 1629 lines, reliability lens approved and acknowledged (lineage
+  `review-2e9739922aab68a0`); advisories accepted as T7.1.
+- 2026-09-26: T7.1 implemented and verified (review follow-ups from the `aa3da40..dc2bedd`
+  review: `requestJson` converts an empty/non-JSON 2xx body into an `ApiError`
+  (`RESPONSE_INVALID_BODY_CODE`) instead of a raw `SyntaxError`; `useRegisterUser`/
+  `useInviteReviewer` reset `fieldErrors` on every submit and only show the "highlighted fields"
+  message when a known field error survives narrowing; `inviteReviewer` validates/normalizes the
+  raw `InvitationResult` body, rejecting with `ApiError` on a structural mismatch; `requestJson`'s
+  problem-body parsing rejects a JSON array body and keeps only string-array `errors` entries).
+  All checks green (`pnpm test` 26 files/168 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`,
   `pnpm format:check`). Commit pending user consent.
+- 2026-09-26: T8 implemented and verified (`RegisterUserPage`/`InviteReviewerPage` compose their
+  feature form with its stateful composable and a labelled results-list of `ResultAlert`s;
+  `RegisterUserPage` shows `UserSummary` with an "Invite as reviewer" link on success, via a new
+  typed `to` prop on `GlassButton`; `InviteReviewerPage` prefills from the `userId` route query;
+  `apps/web/AGENTS.md` documents the page-composition/results-list pattern and the dev API URL;
+  the `entities/**`/`features/**` steiger relaxations were re-verified as permanent — this app's
+  1:1 page-to-form/entity shape will always trip `fsd/insignificant-slice` — and their comments
+  rewritten accordingly, rather than removed). All checks green (`pnpm test` 28 files/180 tests,
+  `pnpm lint`, `pnpm steiger`, `pnpm build`, `pnpm format:check`). Commit pending user consent.
 
 ## Next step
-T8 (pages: `RegisterUserPage`, `InviteReviewerPage` wiring forms, composables and result views;
-`AGENTS.md` web usage notes). T5.1, T6 and T7 are committed as three work-unit commits (barrel
-export lines staged per task).
+T9 (delivery: web `Dockerfile`, `.env.example`, `web` service in `docker-compose.yml` once the
+API compose file from `feat/use-cases` is on `main`, README run instructions). T5.1, T6 and T7 are
+committed as three work-unit commits (`e677e0b`, `c9874a0`, `dc2bedd`). T7.1 and T8 are fully
+separable (no file is touched by both) and are implemented and verified, pending the user's commit
+consent as two further work-unit commits.
