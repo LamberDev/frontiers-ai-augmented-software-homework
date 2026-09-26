@@ -19,6 +19,13 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   `apps/api/AGENTS.md` updates.
 - Out: frontend code and the web Docker image (feature `frontend-ui`), real database, auth.
 
+## Authority
+- From 2026-09-26 the user authorizes commits, push, granting Gentle AI reviews and opening PRs
+  without asking each time; merges still need an explicit yes.
+- 2026-09-26: the user said yes to merging PRs #14-#20 in order, with merge commits (as earlier
+  PRs), after T4d is pushed to #20. Each PR is merged only after it targets `main` and its CI
+  (`ci-success`) passes.
+
 ## Constraints and decisions
 - Contract ids (user decision, 2026-09-25): the HTTP contract exposes the domain `Guid` (v7) as
   `userId`. Deliberate deviation from the brief's `InviteReviewer(int UserId)`, documented in the
@@ -232,12 +239,47 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   - Missing or null `numberOfPublications` returns 400 keyed by `numberOfPublications`.
   - Generic 500 handler tested: status, ProblemDetails shape, no exception details leaked.
   - Result -> HTTP mapping tests for Conflict 409 and non-directory Failure 500.
-- [ ] T4c T4b review follow-ups (user accepted, 2026-09-26):
+- [x] T4c T4b review follow-ups (user accepted, 2026-09-26). Route: delegated (writer).
+  - Evidence: RED with `dotnet test tests/PeerReview.Api.IntegrationTests -c Release`: 4 failed /
+    36 passed — 413/415/422 exceptions rewritten to 400, and the Production malformed-body test got
+    an empty body. `code` assertions passed immediately (tests only). GREEN: 152 passed / 0 failed
+    (62 + 17 + 33 + 40), re-run by the parent. Format clean, build 0 warnings / 0 errors.
+  - Codes: 400 `Request.InvalidBody`, 413 `Request.PayloadTooLarge`, 415
+    `Request.UnsupportedMediaType`, other 4xx `Request.Invalid`, 500 `Server.UnexpectedError`.
+  - Observed framework behavior: a `text/plain` body gets a bare 415 written by minimal API binding
+    itself (no exception, handler not reached), with or without `ThrowOnBadRequest`; documented and
+    tested as-is. Possible later improvement: `UseStatusCodePages` to fill empty error bodies.
+  - Docker check (worktree build, Production): malformed JSON -> 400 ProblemDetails
+    `Request.InvalidBody`; missing `numberOfPublications` -> 400 keyed by the field.
   - `BadHttpRequestException` matched by type hierarchy, honouring its own `StatusCode`
     (413/415 stay as the framework set them).
   - `ThrowOnBadRequest` enabled in every environment; a test runs the host in Production and gets
     the 400 ProblemDetails with `Request.InvalidBody`.
   - Assert `Server.UnexpectedError` in the 500 test and `Request.InvalidBody` in the wrong-type test.
+- [x] T4d Final-review follow-ups (user accepted, 2026-09-26; lands in PR #20). Route: delegated.
+  - Design: `ThrowOnBadRequest = false` in every environment plus `UseStatusCodePages()` and
+    `CustomizeProblemDetails` (`BodyBindingProblemDetails`), which adds the `code` by status
+    (`ClientErrorCodes` lookup) only when a problem has none. The exception handler stays for real
+    unhandled exceptions (500) with reason-phrase titles and a non-4xx clamp.
+  - Evidence: RED `dotnet test tests/PeerReview.Api.IntegrationTests -c Release`: 4 failed / 39
+    passed (fallback title, non-4xx clamp, Error log on a malformed body, bare 415). GREEN: 155
+    passed / 0 failed (62 + 17 + 33 + 43), re-run by the parent; format clean; build 0 warnings.
+    Docker (Production): malformed JSON 400 `Request.InvalidBody`, `text/plain` 415
+    `Request.UnsupportedMediaType`, no error lines in the container log. README bare-415
+    limitation removed; `apps/api/AGENTS.md` updated.
+  - Commit `4785662`. RDD: assess (base `27ea4bf`) medium, `under_budget` (397); review requested
+    deliberately (last change before merge); one lens; approved and acknowledged (lineage
+    `review-c43ca9559e11a560`). Findings: global `UseStatusCodePages` labeled an unknown-route 404
+    `Request.Invalid` (WARNING) -> fixed inline by the parent: `Route.NotFound` (404) and
+    `Request.MethodNotAllowed` (405), RED observed (both returned `Request.Invalid`), GREEN 157/157;
+    413 not proved end to end (WARNING) -> documented in `apps/api/AGENTS.md` (the test host does
+    not enforce a body size limit).
+  - Client body errors (400/413/415) are ProblemDetails with a stable `code` in every environment
+    and are not logged as unhandled exceptions at Error level; real unhandled exceptions stay a
+    generic 500 logged at Error.
+  - Unmapped `BadHttpRequestException` statuses get the title from the status code; non-4xx
+    statuses are treated as the generic 500.
+  - The 415 test asserts the intended contract instead of pinning the framework's empty body.
 - [x] T5 Docker: multi-stage `apps/api/Dockerfile`, `.dockerignore`, root `docker-compose.yml`
   with the api service (web service added by `frontend-ui`); verify `docker build` and `/health`.
   Route: delegated (writer), parent trimmed comments and upgraded the healthcheck.
@@ -270,7 +312,17 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   - Evidence: `docker compose config` shows `host_ip: 127.0.0.1`; clean `git archive` of
     `4333666` plus the edited files: `docker compose up -d --build --wait` -> `Healthy`,
     `docker port` -> `8080/tcp -> 127.0.0.1:8080`, `/health` 200; `down` OK.
-- [ ] T6 README: build/run (local and Docker), API contract summary, deviations (Guid ids, null
+  - Commit (user consented): `4dbc9c4`. RDD: assess (base `4333666`) high (`process_boundary` in
+    compose); consent granted; four lenses; approved with no findings and acknowledged (lineage
+    `review-7a3390115af0482a`, authority burned). Reviewed boundary advances to `4dbc9c4`. The
+    uncommitted T4c work was parked in a `git stash` during this review (its untracked test file
+    blocked the preflight) and restored afterwards.
+- [x] T6 README (done 2026-09-26; route: delegated writer, parent adjusted the Web section
+  after `main` received frontend-ui PRs #10-#12). Evidence: `docker compose config` parses;
+  launch profile URL `http://localhost:5112` and anchors (`apps/api/AGENTS.md#http-contract`,
+  `apps/web/AGENTS.md#configuration`, `docs/ai/README.md#model-used-and-why`) checked; the Quick
+  start commands run verbatim against the container: `/health` 200, `/openapi/v1.json` 200,
+  register 201, invite 200 `invited: true`. Scope: build/run (local and Docker), API contract summary, deviations (Guid ids, null
   score not eligible, score semantics), floating `10.0` base image tags (patch updates vs
   reproducibility), known limitation (university get-or-create race under
   concurrent registrations, no unique index in InMemory), LLM used and why, link to `docs/ai/conversations`.
@@ -283,9 +335,18 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   usings in Domain/Application).
 
 ## Progress
-- T1 done, committed and reviewed (approved). T1b committed (`1c47f76`). T2 committed (`9d4c79a`),
-  reviewed (approved). T3 committed (`48b61d9`; RDD
-  assess base `9d4c79a`: medium, `under_budget`, 258 lines, pending in the slice). T2b committed
-  (`3f6b01d`), reviewed (approved). T4 committed (`ac915bf`), reviewed (approved). T2c committed
-  (`9259f86`; RDD assess base `ac915bf`: medium, `under_budget`, 154 lines, pending in the slice).
-  T4b done (commit pending user consent). Next: T5.
+- All tasks done. Commits: `56c2d5d` T1, `1c47f76` T1b, `9d4c79a` T2, `48b61d9` T3, `3f6b01d` T2b,
+  `ac915bf` T4, `9259f86` T2c, `c4db629` T4b, `4333666` T5, `4dbc9c4` T5b, `377304f` T4c, then T6.
+- Reviewed slices (RDD approved and acknowledged): T1; T1b+T2; T3+T2b; T4; T2c+T4b; T5; T5b.
+  T4c (244 lines, `under_budget`) is pending in the slice with T6.
+- Final suite: 152 passed / 0 failed; format clean; build 0 warnings / 0 errors; container
+  verified (Quick start commands run verbatim).
+- Last slice (T4c+T6, 388 lines, `under_budget`): review requested deliberately because no later
+  commit would reach the budget; consent granted (user authority); one lens; approved and
+  acknowledged (lineage `review-f9463b5af645ed3e`). Advisory findings, open as follow-ups (T4d
+  candidate, user decision): `ThrowOnBadRequest` makes client body errors log as unhandled
+  exceptions at Error level (WARNING); fallback descriptor titles any unmapped status "Bad
+  Request" and does not clamp non-4xx (SUGGESTION); the 415 test pins the framework's empty body
+  (SUGGESTION).
+- Delivery: stacked-to-main PRs, one per reviewed slice: 01 T1, 02 T1b+T2, 03 T3+T2b, 04 T4,
+  05 T2c+T4b, 06 T5+T5b, 07 T4c+T6. Merges need the user's yes.
