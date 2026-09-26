@@ -1,0 +1,29 @@
+# Build output: rebuilt from source inside the image, never useful to copy in
+# (and would poison the layer cache with host-specific binaries).
+**/bin/
+**/obj/
+**/TestResults/
+
+# Test projects: not built or run inside the image (CI runs `dotnet test`);
+# excluding the whole tree keeps the build context small and test-only edits
+# from busting the source COPY layer.
+tests/
+
+# IDE / tooling
+.vs/
+*.user
+*.suo
+
+# git metadata (not part of the build context anyway when context is
+# apps/api, but excluded defensively)
+.git/
+.gitignore
+
+# Docker's own files
+Dockerfile
+.dockerignore
+
+# Logs and OS files
+**/*.log
+.DS_Store
+Thumbs.db
