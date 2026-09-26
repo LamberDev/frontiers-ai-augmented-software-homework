@@ -116,14 +116,17 @@ Application result records, never domain entities, over HTTP.
   `415`) directly, exactly like the framework's own default outside `Development`. This keeps these
   client errors off the exception-handling path entirely, so they are never logged as unhandled
   exceptions at `Error` level.
-  `app.UseStatusCodePages()` (`Program.cs`) turns that bare status code into a `ProblemDetails`
-  response, and `PeerReview.Api.SharedKernel.Http.BodyBindingProblemDetails.Customize` — registered
+  `app.UseStatusCodePages()` (`Program.cs`) turns that bare status code, and any other bodyless
+  4xx/5xx the framework writes (e.g. an unknown route `404`, a wrong method `405`), into a
+  `ProblemDetails` response, and `PeerReview.Api.SharedKernel.Http.BodyBindingProblemDetails.Customize` — registered
   as `AddProblemDetails(o => o.CustomizeProblemDetails = ...)` — fills in its `code` by status
   through a lookup map (`ClientErrorCodes.ByStatusCode`: `400` -> `Request.InvalidBody`, `413` ->
-  `Request.PayloadTooLarge`, `415` -> `Request.UnsupportedMediaType`, any other 4xx ->
+  `Request.PayloadTooLarge`, `415` -> `Request.UnsupportedMediaType`, `404` -> `Route.NotFound`, `405` ->
+  `Request.MethodNotAllowed`, any other 4xx ->
   `Request.Invalid`), only when the response does not already carry one (an endpoint's own
   `ValidationProblem`, or `ResultHttpExtensions`, already set theirs); a non-4xx status is never
-  labeled a client error.
+  labeled a client error. The `413` mapping is not proved end to end (the test host does not
+  enforce a request body size limit); only `400` and `415` are exercised through real requests.
   A single top-level `app.UseExceptionHandler(...)` in `Program.cs`, delegating to
   `PeerReview.Api.SharedKernel.Http.ExceptionHttpExtensions.WriteProblemAsync`, still keeps every
   genuinely unhandled exception a generic `500` `Server.UnexpectedError`, without leaking the

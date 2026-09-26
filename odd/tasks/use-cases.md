@@ -267,6 +267,13 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
     Docker (Production): malformed JSON 400 `Request.InvalidBody`, `text/plain` 415
     `Request.UnsupportedMediaType`, no error lines in the container log. README bare-415
     limitation removed; `apps/api/AGENTS.md` updated.
+  - Commit `4785662`. RDD: assess (base `27ea4bf`) medium, `under_budget` (397); review requested
+    deliberately (last change before merge); one lens; approved and acknowledged (lineage
+    `review-c43ca9559e11a560`). Findings: global `UseStatusCodePages` labeled an unknown-route 404
+    `Request.Invalid` (WARNING) -> fixed inline by the parent: `Route.NotFound` (404) and
+    `Request.MethodNotAllowed` (405), RED observed (both returned `Request.Invalid`), GREEN 157/157;
+    413 not proved end to end (WARNING) -> documented in `apps/api/AGENTS.md` (the test host does
+    not enforce a body size limit).
   - Client body errors (400/413/415) are ProblemDetails with a stable `code` in every environment
     and are not logged as unhandled exceptions at Error level; real unhandled exceptions stay a
     generic 500 logged at Error.
