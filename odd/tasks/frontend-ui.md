@@ -59,6 +59,8 @@ but no UI kit, theme or real components.
 ## Delivery
 - Strategy: ask-on-risk. Forecast > 400 authored lines: the chain strategy will be asked before
   the commit that crosses the budget. Commits only with the user's explicit consent.
+- Chain strategy: stacked-to-main — each slice is its own branch/PR to main after the previous one
+  merges (PR #10 = T1+T1.1, merged `274eddd`); T2 on `feat/frontend-ui-glass`.
 
 ## Tasks
 - [x] T1 Vuetify and `frontiers` theme: install `vuetify`, `vite-plugin-vuetify`, `@mdi/font`,
@@ -137,8 +139,67 @@ but no UI kit, theme or real components.
       `pnpm steiger` PASS (no problems found) · `pnpm build` PASS (`vue-tsc -b && vite build`, 0
       errors) · `pnpm format:check` PASS.
     - Commit: `test(web): cover app wiring, theme and async http client` (the commit that follows `b64f51b`).
-- [ ] T2 Glass atoms and molecules in `shared/ui`: `GlassCard`, `GlassButton`, `GlassTextField`,
+- [x] T2 Glass atoms and molecules in `shared/ui`: `GlassCard`, `GlassButton`, `GlassTextField`,
   `FormField`, `ResultAlert`, `ScoreBadge`, with tests for props, slots and accessibility states.
+  Route: delegated (writer trigger, 2+ non-trivial files).
+  - Evidence:
+    - Structure: `shared/ui/atoms/<Name>/<Name>.vue(+.test.ts)` for atoms (`GlassButton`,
+      `GlassTextField`, `BrandLogo`, `ScoreBadge`) and `shared/ui/molecules/<Name>/<Name>.vue(+.test.ts)`
+      for molecules (`GlassCard`, `FormField`, `ResultAlert`); steiger raised no objection to the
+      atoms/molecules subfolders (clean run, no new relaxation needed). Shared glass tokens/surface
+      in `shared/ui/styles/glass.css` (derived from `glassTokens` in `frontiersTheme.ts`), imported
+      once as a side effect from `shared/ui/index.ts` so any consumer of the public API gets it.
+      Test-only Vuetify-mounting helper at `shared/lib/test/mountWithVuetify.ts` (mounts with the
+      real `frontiers` theme/MDI icons, `shared` never imports `app`).
+    - RED (before implementation): `pnpm test` — 7 new suites failed with `Failed to resolve
+      import "./<Component>.vue"` (files did not exist yet); the 5 pre-existing suites (10 tests)
+      still passed.
+    - GREEN (after implementation): `pnpm test` — 12 files / 52 tests passed (7 new component
+      suites: `GlassButton` 8, `GlassTextField` 8, `BrandLogo` 3, `ScoreBadge` 7, `GlassCard` 5,
+      `FormField` 4, `ResultAlert` 7; existing suites unchanged, 42 new tests total). One
+      intermediate RED during implementation: `GlassTextField`'s "errorMessages marks aria-invalid"
+      test failed because Vuetify's `error`/`error-messages` props style the field but do not set
+      `aria-invalid` on the native `<input>`; fixed by binding `aria-invalid` explicitly (see Deviations).
+    - Checks (from `apps/web`): `pnpm format` PASS (reformatted `glass.css` only, whitespace) ·
+      `pnpm test` PASS (12 files/52 tests) · `pnpm lint` PASS (0 errors/0 warnings, after fixing
+      one `vue/attributes-order` warning on `GlassTextField`) · `pnpm steiger` PASS (no problems
+      found, no relaxation added) · `pnpm build` PASS (`vue-tsc -b && vite build`, 0 errors, after
+      fixing a TS2883 unnamed-type error in `mountWithVuetify`) · `pnpm format:check` PASS.
+    - Deviations/decisions:
+      1. `ScoreBadge`'s aria-label: the task's own example ("University score 72") names a
+         business term, which conflicts with the explicit instruction that `shared/ui` must stay
+         business-agnostic (no "university"/"reviewer"/"invitation"). Resolved by adding an
+         optional `label` prop defaulting to the generic `'Score'`; the accessible label is
+         `${label} ${score|Unknown}`. A later entities/university consumer (T5) can pass
+         `label="University score"` to reproduce the exact example without `shared/ui` naming the
+         domain itself.
+      2. `GlassTextField` `aria-invalid`: Vuetify 4.2.2's `VTextField` does not forward
+         `aria-invalid` to its inner `<input>` from the `error`/`error-messages` props (confirmed
+         by a failing test with the prop-only approach). Initially patched imperatively (template
+         ref + `watchEffect`); simplified in parent spot check to a declarative
+         `:aria-invalid="ariaInvalid"` binding, which `VTextField` forwards to the native input
+         (same test GREEN, WCAG 4.1.2).
+      3. `mountWithVuetify`'s return type: `ReturnType<typeof mount<T>>` produced a `vue-tsc`
+         TS2883 error ("cannot be named without a reference to `vue-component-type-helpers`").
+         Loosened the return type to `VueWrapper<ComponentPublicInstance>` (via `as unknown as`)
+         since this is test-only tooling, not part of the app's public component API, so exact
+         per-instance typing is not required.
+      4. `GlassCard`'s `aria-labelledby` auto-wiring only applies when the default `title` prop
+         rendering is used; if a caller overrides the `title` slot, the card does not set
+         `aria-labelledby` (it would otherwise point at an id the caller's own markup may not
+         use) — the caller then owns its own heading/labeling.
+      5. Contrast approach (documented in `glass.css`): dark text `#282828` on light,
+         white-tinted glass surfaces; both the `@supports not (backdrop-filter)` and
+         `@media (prefers-reduced-transparency: reduce)` fallbacks resolve to an *opaque* white
+         background, so AA contrast never depends on unknown content behind the surface.
+         `GlassButton`'s primary variant instead sits on a solid brand-blue background and relies
+         on Vuetify's theme-driven white `on-primary` text.
+      6. Size: ~1239 authored lines across 17 new/changed files (7 components + 7 tests + CSS +
+         test helper + barrel update), naturally above the ~400-line planning heuristic for one
+         task — not split artificially, since the components form one coherent, currently-unused
+         `shared/ui` addition with no natural sub-slice boundary before T3–T6 consume them.
+    - Commit: pending user consent (per global CLAUDE.md/Engram memory: always ask before `git
+      commit`, overriding ODD's default auto-commit-at-task-close).
 - [ ] T3 Template: `GlassShell` layout (gradient background, blobs, container) and reworked
   `AppHeader` with Register/Invite navigation; responsive, visible focus.
 - [ ] T4 API-free forms: `RegisterUserForm` and `InviteReviewerForm` in `features/*/ui`, local
@@ -170,6 +231,11 @@ but no UI kit, theme or real components.
   user: async `httpClient` rejection, app wiring mount test, observable theme assertion). All
   checks green (`pnpm test` 5 files/10 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`,
   `pnpm format:check`). Committed with user consent.
+- 2026-09-25: T2 implemented and verified (glass atoms/molecules in `shared/ui`: `GlassButton`,
+  `GlassTextField`, `BrandLogo`, `ScoreBadge`, `GlassCard`, `FormField`, `ResultAlert`, plus shared
+  `glass.css` tokens and the `mountWithVuetify` test helper). All checks green (`pnpm test` 12
+  files/52 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`, `pnpm format:check`). Commit pending
+  user consent.
 
 ## Next step
-T2 (glass atoms and molecules in `shared/ui`), once the user authorizes the next commit/task.
+T3 (`GlassShell` layout and reworked `AppHeader`), once the user authorizes the next commit/task.

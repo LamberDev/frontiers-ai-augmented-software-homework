@@ -1,0 +1,61 @@
+/**
+ * Shared glassmorphism design tokens and base surface styling for
+ * `shared/ui` atoms and molecules. Values mirror `glassTokens` in
+ * `shared/config/theme/frontiersTheme.ts` (single source of truth for the
+ * raw numbers); this file turns them into CSS custom properties and one
+ * reusable `.glass-surface` class so every glass component looks the same
+ * without features styling Vuetify directly (see `odd/tasks/frontend-ui.md`,
+ * "Brand tokens" / glass section).
+ *
+ * Contrast approach (documented, not just implemented): every `.glass-surface`
+ * renders dark text (`#282828`, the Frontiers `on-surface` neutral) on a
+ * light, white-tinted translucent background. The fallbacks below always
+ * resolve to an *opaque* white background, so text contrast never depends on
+ * unknown content behind the surface and stays >= 4.5:1 (WCAG AA) in every
+ * mode. Components that sit on a solid brand-blue background instead (e.g.
+ * `GlassButton`'s primary variant) rely on Vuetify's theme-driven white
+ * "on-primary" text, not this file.
+ */
+:root {
+  --glass-blur: 16px;
+  --glass-surface-bg: rgba(255, 255, 255, 0.14);
+  --glass-surface-bg-opaque: #ffffff;
+  --glass-border-color: rgba(255, 255, 255, 0.25);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+  --glass-radius: 16px;
+  --glass-text: #282828;
+  --glass-transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-surface {
+  background: var(--glass-surface-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border-color);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-shadow);
+  color: var(--glass-text);
+  transition: var(--glass-transition);
+}
+
+/* No backdrop-filter support: fall back to an opaque surface so text stays readable. */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-surface {
+    background: var(--glass-surface-bg-opaque);
+  }
+}
+
+/* Respect the user's reduced-transparency preference with an opaque surface too. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-surface {
+    background: var(--glass-surface-bg-opaque);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-surface {
+    transition: none;
+  }
+}
