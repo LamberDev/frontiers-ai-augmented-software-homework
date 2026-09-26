@@ -3,9 +3,12 @@
  */
 export { default as InviteReviewerForm } from './ui/InviteReviewerForm.vue'
 export { validateInviteReviewer } from './model/validateInviteReviewer'
+export { inviteReviewer } from './api/inviteReviewer'
 export type {
   InviteReviewerField,
   InviteReviewerFieldErrors,
   InviteReviewerFormValues,
   InviteReviewerInput,
+  InvitationReason,
+  InvitationResult,
 } from './model/types'
