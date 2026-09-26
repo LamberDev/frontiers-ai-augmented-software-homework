@@ -22,6 +22,9 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
 ## Authority
 - From 2026-09-26 the user authorizes commits, push, granting Gentle AI reviews and opening PRs
   without asking each time; merges still need an explicit yes.
+- 2026-09-26: the user said yes to merging PRs #14-#20 in order, with merge commits (as earlier
+  PRs), after T4d is pushed to #20. Each PR is merged only after it targets `main` and its CI
+  (`ci-success`) passes.
 
 ## Constraints and decisions
 - Contract ids (user decision, 2026-09-25): the HTTP contract exposes the domain `Guid` (v7) as
@@ -253,6 +256,23 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   - `ThrowOnBadRequest` enabled in every environment; a test runs the host in Production and gets
     the 400 ProblemDetails with `Request.InvalidBody`.
   - Assert `Server.UnexpectedError` in the 500 test and `Request.InvalidBody` in the wrong-type test.
+- [x] T4d Final-review follow-ups (user accepted, 2026-09-26; lands in PR #20). Route: delegated.
+  - Design: `ThrowOnBadRequest = false` in every environment plus `UseStatusCodePages()` and
+    `CustomizeProblemDetails` (`BodyBindingProblemDetails`), which adds the `code` by status
+    (`ClientErrorCodes` lookup) only when a problem has none. The exception handler stays for real
+    unhandled exceptions (500) with reason-phrase titles and a non-4xx clamp.
+  - Evidence: RED `dotnet test tests/PeerReview.Api.IntegrationTests -c Release`: 4 failed / 39
+    passed (fallback title, non-4xx clamp, Error log on a malformed body, bare 415). GREEN: 155
+    passed / 0 failed (62 + 17 + 33 + 43), re-run by the parent; format clean; build 0 warnings.
+    Docker (Production): malformed JSON 400 `Request.InvalidBody`, `text/plain` 415
+    `Request.UnsupportedMediaType`, no error lines in the container log. README bare-415
+    limitation removed; `apps/api/AGENTS.md` updated.
+  - Client body errors (400/413/415) are ProblemDetails with a stable `code` in every environment
+    and are not logged as unhandled exceptions at Error level; real unhandled exceptions stay a
+    generic 500 logged at Error.
+  - Unmapped `BadHttpRequestException` statuses get the title from the status code; non-4xx
+    statuses are treated as the generic 500.
+  - The 415 test asserts the intended contract instead of pinning the framework's empty body.
 - [x] T5 Docker: multi-stage `apps/api/Dockerfile`, `.dockerignore`, root `docker-compose.yml`
   with the api service (web service added by `frontend-ui`); verify `docker build` and `/health`.
   Route: delegated (writer), parent trimmed comments and upgraded the healthcheck.

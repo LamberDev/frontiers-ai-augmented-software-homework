@@ -90,15 +90,14 @@ Application result records, never domain entities, over HTTP.
     `universityName`, `numberOfPublications`), including a missing/`null` `numberOfPublications`
     (checked in the endpoint before the handler runs, returned alone without accumulating with
     handler validation).
-  - `400` `ProblemDetails` — a malformed or type-mismatched JSON body (e.g. a non-JSON payload, or
-    `"numberOfPublications": "abc"`) fails model binding before the handler runs and is caught by
-    the top-level exception handler as a `BadHttpRequestException`; see below.
-  - `415` — an unsupported request `Content-Type` (e.g. `text/plain`) is rejected by minimal API's
-    own JSON body binding before the handler runs, with a bare, empty-body `415` response written
-    directly to the response: no exception is thrown, so this one never reaches the top-level
-    exception handler and carries no `ProblemDetails` envelope or `code`, regardless of
-    `RouteHandlerOptions.ThrowOnBadRequest` (verified against .NET 10.0.401; a framework detail, not
-    a documented contract).
+  - `400` `ProblemDetails` (`code: Request.InvalidBody`) — a malformed or type-mismatched JSON body
+    (e.g. a non-JSON payload, or `"numberOfPublications": "abc"`) fails model binding before the
+    handler runs; see below.
+  - `413` `ProblemDetails` (`code: Request.PayloadTooLarge`) — the request body exceeds the
+    configured limit, rejected by the same body-binding step.
+  - `415` `ProblemDetails` (`code: Request.UnsupportedMediaType`) — an unsupported request
+    `Content-Type` (e.g. `text/plain`), rejected by minimal API's own JSON body binding before the
+    handler runs.
   - `404` `ProblemDetails` — university not found in Frontiers (`UniversityDirectory.NotFound`).
   - `502` `ProblemDetails` — Frontiers unavailable or returned invalid data
     (`UniversityDirectory.Unavailable` / `UniversityDirectory.InvalidEntry`).
@@ -109,20 +108,31 @@ Application result records, never domain entities, over HTTP.
     or a malformed body (the request body is read manually so all of these fail the same way).
   - `404` `ProblemDetails` — unknown user id.
 - Every error is an RFC 9457 `ProblemDetails`/`ValidationProblem` (`AddProblemDetails()`), including
-  framework body-binding failures and unhandled exceptions. A single top-level
-  `app.UseExceptionHandler(...)` in `Program.cs`, delegating to
-  `PeerReview.Api.SharedKernel.Http.ExceptionHttpExtensions.WriteProblemAsync`, matches a thrown
-  exception by type hierarchy (`exception is BadHttpRequestException bad`, not an exact-type check,
-  since the type is not sealed) and honours the exception's own `bad.StatusCode` rather than forcing
-  `400`: a `400` (malformed or type-mismatched JSON body) gets `Request.InvalidBody` and the generic
-  `detail` "The request body is invalid."; other framework client statuses the exception may carry
-  keep their own status with a stable `code` and no `detail` (`413` ->
-  `Request.PayloadTooLarge`, `415` -> `Request.UnsupportedMediaType`), and any other 4xx not in that
-  lookup falls back to `Request.Invalid`. Every other exception stays a generic `500`
-  `Server.UnexpectedError`. No case ever leaks the exception's message or stack trace.
-  `RouteHandlerOptions.ThrowOnBadRequest = true` is configured in `Program.cs` for every
-  environment, so a body-binding failure always throws (and reaches this handler) instead of only
-  writing a bare status code directly, which is the framework's default outside `Development`.
+  framework body-binding failures and unhandled exceptions.
+  `RouteHandlerOptions.ThrowOnBadRequest = false` is configured in `Program.cs` for every
+  environment (its default is `true` in `Development`, `false` elsewhere), so a body-binding
+  failure (malformed/type-mismatched JSON body, oversized payload, unsupported content type) never
+  throws, anywhere: minimal API only writes a bare, bodyless client-error status code (`400`/`413`/
+  `415`) directly, exactly like the framework's own default outside `Development`. This keeps these
+  client errors off the exception-handling path entirely, so they are never logged as unhandled
+  exceptions at `Error` level.
+  `app.UseStatusCodePages()` (`Program.cs`) turns that bare status code into a `ProblemDetails`
+  response, and `PeerReview.Api.SharedKernel.Http.BodyBindingProblemDetails.Customize` — registered
+  as `AddProblemDetails(o => o.CustomizeProblemDetails = ...)` — fills in its `code` by status
+  through a lookup map (`ClientErrorCodes.ByStatusCode`: `400` -> `Request.InvalidBody`, `413` ->
+  `Request.PayloadTooLarge`, `415` -> `Request.UnsupportedMediaType`, any other 4xx ->
+  `Request.Invalid`), only when the response does not already carry one (an endpoint's own
+  `ValidationProblem`, or `ResultHttpExtensions`, already set theirs); a non-4xx status is never
+  labeled a client error.
+  A single top-level `app.UseExceptionHandler(...)` in `Program.cs`, delegating to
+  `PeerReview.Api.SharedKernel.Http.ExceptionHttpExtensions.WriteProblemAsync`, still keeps every
+  genuinely unhandled exception a generic `500` `Server.UnexpectedError`, without leaking the
+  exception's message or stack trace. It also still matches a thrown exception by type hierarchy
+  (`exception is BadHttpRequestException bad`, not an exact-type check, since the type is not
+  sealed) as defense in depth for any other framework path that may still throw one: it honours the
+  exception's own `bad.StatusCode` when it is a genuine 4xx (same `code` lookup and a title from
+  `ReasonPhrases.GetReasonPhrase(bad.StatusCode)`, with the fixed detail "The request body is
+  invalid." kept only for `400`), and falls back to the generic `500` for a non-4xx status.
   `RegisterUser.NumberOfPublicationsRequired` is a separate, endpoint-level code for a missing
   `numberOfPublications` (checked before the handler runs); the Application/Domain error code is
   used for every other mapped result.

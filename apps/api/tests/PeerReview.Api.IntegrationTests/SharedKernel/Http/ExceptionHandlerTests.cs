@@ -51,10 +51,11 @@ public class ExceptionHandlerTests : IClassFixture<PeerReviewApiFactory>
     [Fact]
     public async Task PostUsers_InProductionEnvironmentWithMalformedJsonBody_Returns400ProblemDetailsWithInvalidBodyCode()
     {
-        // RouteHandlerOptions.ThrowOnBadRequest is only on by default in Development; this proves
-        // it is explicitly enabled for every environment (Program.cs), so a malformed body still
-        // reaches this exception handler, instead of a bare, bodyless 400 written directly by
-        // minimal API's own body-binding short-circuit.
+        // RouteHandlerOptions.ThrowOnBadRequest = false is explicit for every environment
+        // (Program.cs), so this proves the bare, bodyless 400 minimal API's own body-binding
+        // short-circuit writes directly still reaches the client as this same ProblemDetails
+        // contract in Production, via app.UseStatusCodePages() and BodyBindingProblemDetails, not
+        // through this exception handler.
         using var client = _factory.WithWebHostBuilder(builder => builder.UseEnvironment("Production")).CreateClient();
         var content = new StringContent("{ this is not valid json", Encoding.UTF8, "application/json");
 

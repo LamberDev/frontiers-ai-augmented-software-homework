@@ -170,10 +170,6 @@ contract is served at `/openapi/v1.json`.
 - **No automatic restart on unhealthy:** `docker-compose.yml` reports container health but does
   not restart a container that becomes unhealthy; `restart: unless-stopped` only covers the
   process exiting.
-- **Unsupported `Content-Type`:** a request with a `Content-Type` other than JSON (e.g.
-  `text/plain`) gets a bare `415` with an empty body, not a `ProblemDetails` envelope — this is
-  ASP.NET Core minimal API's own body-binding behavior, before the handler or exception handler
-  runs (see [`apps/api/AGENTS.md#http-contract`](apps/api/AGENTS.md#http-contract)).
 
 ## AI usage
 

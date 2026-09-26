@@ -150,19 +150,21 @@ public class RegisterUserEndpointTests : IClassFixture<PeerReviewApiFactory>
     }
 
     [Fact]
-    public async Task PostUsers_WithUnsupportedContentType_Returns415WithEmptyBody()
+    public async Task PostUsers_WithUnsupportedContentType_Returns415ProblemDetailsWithCode()
     {
         // Minimal API's own JSON body binding rejects an unsupported content type by writing the
-        // status code directly and returning, before invoking the endpoint delegate: no exception
-        // is thrown, so this never reaches the top-level exception handler and carries no
-        // ProblemDetails body, with or without RouteHandlerOptions.ThrowOnBadRequest (observed
-        // behavior, not documented framework contract).
+        // 415 status directly, before invoking the endpoint delegate. With
+        // RouteHandlerOptions.ThrowOnBadRequest = false (Program.cs, every environment) it never
+        // throws; app.UseStatusCodePages() (Program.cs) turns that bare status into this
+        // ProblemDetails response.
         var content = new StringContent("plain text body", Encoding.UTF8, "text/plain");
 
         var response = await _client.PostAsync("/api/users", content);
 
         Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
-        Assert.Equal(string.Empty, await response.Content.ReadAsStringAsync());
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        var root = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal("Request.UnsupportedMediaType", root.GetProperty("code").GetString());
     }
 
     [Fact]

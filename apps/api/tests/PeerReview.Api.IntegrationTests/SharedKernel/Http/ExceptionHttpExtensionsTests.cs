@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using PeerReview.Api.SharedKernel.Http;
 
@@ -59,7 +60,7 @@ public class ExceptionHttpExtensionsTests
     }
 
     [Fact]
-    public async Task WriteProblemAsync_WithBadHttpRequestExceptionAtUnmappedClientStatus_KeepsThatStatusWithFallbackCode()
+    public async Task WriteProblemAsync_WithBadHttpRequestExceptionAtUnmappedClientStatus_KeepsThatStatusWithFallbackCodeAndReasonPhraseTitle()
     {
         var (statusCode, _, body) = await ExecuteAsync(
             new BadHttpRequestException("secret detail", StatusCodes.Status422UnprocessableEntity));
@@ -67,6 +68,21 @@ public class ExceptionHttpExtensionsTests
         Assert.Equal(StatusCodes.Status422UnprocessableEntity, statusCode);
         var root = JsonDocument.Parse(body).RootElement;
         Assert.Equal("Request.Invalid", root.GetProperty("code").GetString());
+        Assert.Equal(
+            ReasonPhrases.GetReasonPhrase(StatusCodes.Status422UnprocessableEntity),
+            root.GetProperty("title").GetString());
+        Assert.DoesNotContain("secret detail", body);
+    }
+
+    [Fact]
+    public async Task WriteProblemAsync_WithBadHttpRequestExceptionAtNon4xxStatus_TreatsItAsTheGeneric500()
+    {
+        var (statusCode, _, body) = await ExecuteAsync(
+            new BadHttpRequestException("secret detail", StatusCodes.Status503ServiceUnavailable));
+
+        Assert.Equal(StatusCodes.Status500InternalServerError, statusCode);
+        var root = JsonDocument.Parse(body).RootElement;
+        Assert.Equal("Server.UnexpectedError", root.GetProperty("code").GetString());
         Assert.DoesNotContain("secret detail", body);
     }
 
