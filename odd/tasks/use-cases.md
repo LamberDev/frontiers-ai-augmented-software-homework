@@ -139,6 +139,15 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
     0 errors, dependency rule OK. Validation rules are tested through
     `IOptions<FrontiersOrganizationsOptions>.Value`; `ValidateOnStart()` enforces them at host
     startup.
+  - Commit (user consented): `3f6b01d`. RDD: assess (base `9d4c79a`, slice T3+T2b) medium,
+    `slice_budget_reached` (440 lines); consent granted; one lens (`review-reliability`);
+    approved and acknowledged (lineage `review-a94f56a196235155`, authority burned). Reviewed
+    boundary advances to `3f6b01d`. Advisory findings (non-blocking): invalid-Timeout theory does
+    not assert which rule failed (WARNING; mitigated because the default `BaseAddress` is valid,
+    but the message is not asserted); Timeout upper bound (> `int.MaxValue` ms) and
+    `InfiniteTimeSpan` not aligned with `HttpClient` (SUGGESTION); `ValidateOnStart` not proved
+    by a host-level test (SUGGESTION); trailing-slash append breaks a base address with a query or
+    fragment (SUGGESTION).
   - R3 null-suggestion-element: a null first array element maps to `InvalidEntry` (test).
   - R3 unvalidated-client-options: validate `FrontiersOrganizationsOptions` at startup
     (`ValidateOnStart`: absolute http(s) `BaseAddress`, `Timeout` > 0); normalize a missing
@@ -154,10 +163,35 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   - `ReviewerInvitation(UserId, Invited, Message, Reasons)`; `Guid.Empty` ->
     `Reviewer.UserIdRequired` (Validation, repository not called); unknown user ->
     `Reviewer.UserNotFound` (NotFound); read-only, no save.
-- [ ] T4 Endpoints and contract (Api): `POST /api/users` and `POST /api/reviewers/invitations`,
+- [x] T4 Endpoints and contract (Api): `POST /api/users` and `POST /api/reviewers/invitations`,
   request/response records, Result -> HTTP mapping, OpenAPI, CORS for the web origin from
   configuration; new `PeerReview.Api.IntegrationTests` with `WebApplicationFactory` and a fake
-  `IUniversityDirectory`; contract documented in `apps/api/AGENTS.md`.
+  `IUniversityDirectory`; contract documented in `apps/api/AGENTS.md`. Route: delegated (writer).
+  - Evidence: RED with stub endpoints returning 501: Api tests 17 failed / 6 passed (status
+    code mismatches, `NotImplemented`). GREEN: 131 passed / 0 failed (62 + 17 + 29 + 23),
+    re-run by the parent. Format clean, build 0 warnings / 0 errors, references OK (Api ->
+    Application + Infrastructure; Api tests -> Api only). Smoke run against the real Frontiers
+    API: `/health` 200, `/openapi/v1.json` 200 with both paths, `POST /api/users` (Ada Lovelace,
+    Harvard University, 5) 201 with Frontiers id 1327079645 and score 94.36,
+    `POST /api/reviewers/invitations` with the returned id 200 `invited: true`.
+  - Mapping in `Api/SharedKernel/Http/ResultHttpExtensions.cs`; ProblemDetails with a `code`
+    extension; OpenAPI in all environments; CORS policy from `Cors:AllowedOrigins`
+    (Development: `http://localhost:5173`), POST + `Content-Type` only. Packages (10.0.12):
+    `Microsoft.AspNetCore.OpenApi`, `Microsoft.AspNetCore.Mvc.Testing`. CI unchanged (it runs the
+    whole solution). The deferred T1 DI test is covered here.
+  - Parent correction (user convention: lookup maps over `switch`): replaced the `ErrorType`
+    switch expression with a `StatusCodeByErrorType` map; the 502 override applies only to
+    `UniversityDirectory.*` failures (a first version also turned `UniversityDirectory.NotFound`
+    into 502 and the existing 404 test caught it).
+  - ~868 authored lines (tests are about half); larger than the 400 heuristic because the
+    contract, mapping and its integration tests form one coherent unit.
+- [ ] T2c T2b review follow-ups (user accepted, 2026-09-26):
+  - Options tests set a valid counterpart value and assert the failing rule's message.
+  - `Timeout` rule matches `HttpClient`: > 0 and <= `int.MaxValue` ms (`InfiniteTimeSpan` stays
+    rejected: an unbounded upstream call makes no sense here).
+  - Host-level test in `PeerReview.Api.IntegrationTests`: invalid `FrontiersOrganizations`
+    configuration makes startup fail (`ValidateOnStart`).
+  - `BaseAddress` with a query or fragment is rejected by validation.
 - [ ] T5 Docker: multi-stage `apps/api/Dockerfile`, `.dockerignore`, root `docker-compose.yml`
   with the api service (web service added by `frontend-ui`); verify `docker build` and `/health`.
 - [ ] T6 README: build/run (local and Docker), API contract summary, deviations (Guid ids, null
@@ -174,5 +208,5 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
 ## Progress
 - T1 done, committed and reviewed (approved). T1b committed (`1c47f76`). T2 committed (`9d4c79a`),
   reviewed (approved). T3 committed (`48b61d9`; RDD
-  assess base `9d4c79a`: medium, `under_budget`, 258 lines, pending in the slice). T2b done
-  (commit pending user consent). Next: T4.
+  assess base `9d4c79a`: medium, `under_budget`, 258 lines, pending in the slice). T2b committed
+  (`3f6b01d`), reviewed (approved). T4 committed (user consented). Next: T2c, then T5.
