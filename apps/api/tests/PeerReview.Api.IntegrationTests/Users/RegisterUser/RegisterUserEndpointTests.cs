@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using PeerReview.Application.Universities;
 
@@ -116,5 +117,62 @@ public class RegisterUserEndpointTests : IClassFixture<PeerReviewApiFactory>
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         var root = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
         Assert.Equal(UniversityDirectoryErrors.InvalidEntry.Code, root.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task PostUsers_WithMalformedJsonBody_Returns400ProblemDetailsWithoutLeakingDetails()
+    {
+        var content = new StringContent("{ this is not valid json", Encoding.UTF8, "application/json");
+
+        var response = await _client.PostAsync("/api/users", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("JsonException", body);
+        Assert.DoesNotContain("StackTrace", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Request.InvalidBody", JsonDocument.Parse(body).RootElement.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task PostUsers_WithWrongJsonTypeForNumberOfPublications_Returns400ProblemDetails()
+    {
+        var content = new StringContent(
+            """{ "userName": "Ada Lovelace", "universityName": "MIT", "numberOfPublications": "abc" }""",
+            Encoding.UTF8,
+            "application/json");
+
+        var response = await _client.PostAsync("/api/users", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task PostUsers_WithMissingNumberOfPublications_ReturnsValidationProblemForNumberOfPublicationsField()
+    {
+        var content = new StringContent(
+            """{ "userName": "Ada Lovelace", "universityName": "MIT" }""",
+            Encoding.UTF8,
+            "application/json");
+
+        var response = await _client.PostAsync("/api/users", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var root = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        Assert.True(root.GetProperty("errors").TryGetProperty("numberOfPublications", out _));
+        Assert.Equal("RegisterUser.NumberOfPublicationsRequired", root.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task PostUsers_WithNullNumberOfPublications_ReturnsValidationProblemForNumberOfPublicationsField()
+    {
+        var payload = new { userName = "Ada Lovelace", universityName = "MIT", numberOfPublications = (int?)null };
+
+        var response = await _client.PostAsJsonAsync("/api/users", payload);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errors = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("errors");
+        Assert.True(errors.TryGetProperty("numberOfPublications", out _));
     }
 }

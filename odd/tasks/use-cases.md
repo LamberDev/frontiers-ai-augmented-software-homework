@@ -208,7 +208,18 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   - Host-level test in `PeerReview.Api.IntegrationTests`: invalid `FrontiersOrganizations`
     configuration makes startup fail (`ValidateOnStart`).
   - `BaseAddress` with a query or fragment is rejected by validation.
-- [ ] T4b T4 review follow-ups (user accepted, 2026-09-26):
+- [x] T4b T4 review follow-ups (user accepted, 2026-09-26). Route: delegated (writer).
+  - Evidence: RED with `dotnet test tests/PeerReview.Api.IntegrationTests -c Release`: 4 failed /
+    29 passed — malformed JSON and wrong JSON type on `/api/users` got 500, missing
+    `numberOfPublications` got 201 (bound to 0), null `numberOfPublications` got 500. Invitations
+    body cases, the generic 500 test and the 409/500 mapping unit tests passed immediately
+    (behavior already correct; tests only). GREEN: 145 passed / 0 failed (62 + 17 + 33 + 33),
+    re-run by the parent. Format clean, build 0 warnings / 0 errors. Smoke: malformed body 400 on
+    both endpoints, missing `numberOfPublications` 400 keyed by the field.
+  - Parent correction: the two new problems lacked the contract's `code` extension; added
+    `Request.InvalidBody` / `Server.UnexpectedError` (exception handler) and
+    `RegisterUser.NumberOfPublicationsRequired`, asserted in tests (RED observed by removing the
+    extension: `KeyNotFoundException` on `code`), documented in `apps/api/AGENTS.md`.
   - Malformed or non-JSON body returns 400 ProblemDetails (not 500) on both endpoints.
   - Missing or null `numberOfPublications` returns 400 keyed by `numberOfPublications`.
   - Generic 500 handler tested: status, ProblemDetails shape, no exception details leaked.
@@ -231,4 +242,5 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   reviewed (approved). T3 committed (`48b61d9`; RDD
   assess base `9d4c79a`: medium, `under_budget`, 258 lines, pending in the slice). T2b committed
   (`3f6b01d`), reviewed (approved). T4 committed (`ac915bf`), reviewed (approved). T2c committed
-  (user consented). Next: T4b, then T5.
+  (`9259f86`; RDD assess base `ac915bf`: medium, `under_budget`, 154 lines, pending in the slice).
+  T4b done (commit pending user consent). Next: T5.
