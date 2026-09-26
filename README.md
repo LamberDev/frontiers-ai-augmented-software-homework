@@ -60,4 +60,125 @@ The pre-commit hook gives fast local feedback on staged files, but it can be ski
 (`--no-verify`, `LEFTHOOK=0`); CI is the definitive validation and also runs the checks that
 are too slow for the hook.
 
-Build and run instructions will be added as the apps are implemented.
+## Quick start (Docker)
+
+Run the API in a container:
+
+```bash
+docker compose up --build
+```
+
+The API listens on `http://localhost:8080` (published on `127.0.0.1` only). Wait for the
+healthcheck to report `healthy` (`docker compose ps`), then try it:
+
+```bash
+# Health check
+curl http://localhost:8080/health
+
+# OpenAPI document
+curl http://localhost:8080/openapi/v1.json
+
+# Register a user (copy "userId" from the response)
+curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"userName":"Ada Lovelace","universityName":"Harvard University","numberOfPublications":5}'
+
+# Invite that user as a reviewer (replace <userId> with the value above)
+curl -X POST http://localhost:8080/api/reviewers/invitations \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"<userId>"}'
+```
+
+`docker compose down` stops and removes the container. The `web` service is added by the
+`frontend-ui` feature and is not part of this compose file yet.
+
+## Run locally without Docker
+
+### API
+
+From `apps/api`:
+
+```bash
+dotnet run --project src/PeerReview.Api
+```
+
+This uses the `http` launch profile in
+[`src/PeerReview.Api/Properties/launchSettings.json`](apps/api/src/PeerReview.Api/Properties/launchSettings.json),
+which binds to `http://localhost:5112` (pass `--urls http://localhost:8080`, or any other URL,
+to override it). Run the tests with:
+
+```bash
+dotnet test PeerReview.slnx -c Release
+```
+
+### Web
+
+The frontend UI (forms, glass-morphism styling, API wiring) is delivered by the `frontend-ui`
+feature, which is still in progress: until it wires the API, the pages are placeholders. To run
+it, from `apps/web`:
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Vite serves it on `http://localhost:5173`. The app reads the API base URL from `VITE_API_URL`
+(see [`apps/web/AGENTS.md`](apps/web/AGENTS.md#configuration)); set it in an `.env` file, e.g.
+`VITE_API_URL=http://localhost:8080`.
+
+## API contract summary
+
+| Endpoint | Body | Success | Errors |
+|---|---|---|---|
+| `POST /api/users` | `{ userName, universityName, numberOfPublications }` | `201` `{ userId, userName, numberOfPublications, university: { id, frontiersOrganizationId, name, score } }` | `400` validation (per field) or malformed body; `404` university not found; `502` Frontiers unavailable or invalid |
+| `POST /api/reviewers/invitations` | `{ userId }` (Guid) | `200` `{ userId, invited, message, reasons: [{ code, message }] }` (`invited: false` is still `200`) | `400` empty/non-Guid `userId`; `404` unknown user |
+
+Every error is an RFC 9457 `ProblemDetails`/`ValidationProblem` with a stable `code` extension,
+and validation failures are keyed by field. Full details (status-code mapping, exception
+handling, OpenAPI, CORS) are in
+[`apps/api/AGENTS.md#http-contract`](apps/api/AGENTS.md#http-contract); the machine-readable
+contract is served at `/openapi/v1.json`.
+
+## Design decisions and deviations from the brief
+
+- **`userId` is a `Guid` (v7), not the brief's `InviteReviewer(int UserId)`.** Guids are not
+  enumerable, do not leak a user count, and are known before the entity is persisted. The HTTP
+  contract exposes this id and keeps it separate from domain types.
+- **Eligibility:** `numberOfPublications > 3` and university `score >= 60`. An unknown (`null`)
+  score is treated as not eligible, never as a pass. An ineligible user is still a successful
+  `200` response, with `invited: false` and the reasons.
+- **Frontiers lookup** uses `GET /v1/organizations/elasticSuggestions?query=<name>&maxcount=1`.
+  The search is fuzzy, so a misspelled university name still registers the closest match
+  (possibly with a low score); only an empty result is treated as "not found" (`404`). An
+  upstream failure or invalid entry is `502`. The returned score is presumed to be the
+  Elasticsearch relevance score, not an accreditation rating; the brief's `>= 60` threshold is
+  applied to it as given.
+- **University snapshot:** a university's data (including its score) is fetched and stored once,
+  at the first registration that references it, and reused afterwards by
+  `frontiersOrganizationId`. It is not re-fetched on later registrations.
+- **Persistence** is EF Core InMemory: all data is lost when the process restarts.
+
+## Known limitations
+
+- **University get-or-create race:** concurrent registrations for a university that does not yet
+  exist can create duplicate `University` rows, because EF Core InMemory does not enforce a
+  unique index on `FrontiersOrganizationId`; the no-duplicates guarantee only comes from the
+  get-or-create logic in the handler, not the database.
+- **Floating base image tags:** the Dockerfile pins `mcr.microsoft.com/dotnet/sdk:10.0` and
+  `mcr.microsoft.com/dotnet/aspnet:10.0` (minor version only), so a rebuild can pick up a newer
+  patch release; builds are not bit-for-bit reproducible over time.
+- **No automatic restart on unhealthy:** `docker-compose.yml` reports container health but does
+  not restart a container that becomes unhealthy; `restart: unless-stopped` only covers the
+  process exiting.
+- **Unsupported `Content-Type`:** a request with a `Content-Type` other than JSON (e.g.
+  `text/plain`) gets a bare `415` with an empty body, not a `ProblemDetails` envelope — this is
+  ASP.NET Core minimal API's own body-binding behavior, before the handler or exception handler
+  runs (see [`apps/api/AGENTS.md#http-contract`](apps/api/AGENTS.md#http-contract)).
+
+## AI usage
+
+This project was built with AI assistance under an explicit set of rules (human-authorized
+changes, strict TDD, reviewed commits). See [`docs/ai/README.md`](docs/ai/README.md) for the
+harness, [`docs/ai/README.md#model-used-and-why`](docs/ai/README.md#model-used-and-why) for the
+model used and why, and [`docs/ai/conversations/`](docs/ai/conversations/) for the prompt
+history.

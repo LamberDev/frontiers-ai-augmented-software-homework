@@ -290,7 +290,12 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
     `review-7a3390115af0482a`, authority burned). Reviewed boundary advances to `4dbc9c4`. The
     uncommitted T4c work was parked in a `git stash` during this review (its untracked test file
     blocked the preflight) and restored afterwards.
-- [ ] T6 README: build/run (local and Docker), API contract summary, deviations (Guid ids, null
+- [x] T6 README (done 2026-09-26; route: delegated writer, parent adjusted the Web section
+  after `main` received frontend-ui PRs #10-#12). Evidence: `docker compose config` parses;
+  launch profile URL `http://localhost:5112` and anchors (`apps/api/AGENTS.md#http-contract`,
+  `apps/web/AGENTS.md#configuration`, `docs/ai/README.md#model-used-and-why`) checked; the Quick
+  start commands run verbatim against the container: `/health` 200, `/openapi/v1.json` 200,
+  register 201, invite 200 `invited: true`. Scope: build/run (local and Docker), API contract summary, deviations (Guid ids, null
   score not eligible, score semantics), floating `10.0` base image tags (patch updates vs
   reproducibility), known limitation (university get-or-create race under
   concurrent registrations, no unique index in InMemory), LLM used and why, link to `docs/ai/conversations`.
@@ -303,9 +308,11 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   usings in Domain/Application).
 
 ## Progress
-- T1 done, committed and reviewed (approved). T1b committed (`1c47f76`). T2 committed (`9d4c79a`),
-  reviewed (approved). T3 committed (`48b61d9`; RDD
-  assess base `9d4c79a`: medium, `under_budget`, 258 lines, pending in the slice). T2b committed
-  (`3f6b01d`), reviewed (approved). T4 committed (`ac915bf`), reviewed (approved). T2c committed
-  (`9259f86`; RDD assess base `ac915bf`: medium, `under_budget`, 154 lines, pending in the slice).
-  T4b done (commit pending user consent). Next: T5.
+- All tasks done. Commits: `56c2d5d` T1, `1c47f76` T1b, `9d4c79a` T2, `48b61d9` T3, `3f6b01d` T2b,
+  `ac915bf` T4, `9259f86` T2c, `c4db629` T4b, `4333666` T5, `4dbc9c4` T5b, `377304f` T4c, then T6.
+- Reviewed slices (RDD approved and acknowledged): T1; T1b+T2; T3+T2b; T4; T2c+T4b; T5; T5b.
+  T4c (244 lines, `under_budget`) is pending in the slice with T6.
+- Final suite: 152 passed / 0 failed; format clean; build 0 warnings / 0 errors; container
+  verified (Quick start commands run verbatim).
+- Next: review of the last slice if due, then push and stacked-to-main PRs (authorized
+  2026-09-26); merges need the user's yes.
