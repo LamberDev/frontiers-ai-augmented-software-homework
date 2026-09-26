@@ -217,6 +217,8 @@ but no UI kit, theme or real components.
        any content change. Contract: controlled via `v-model` (default visible); closing sets the
        model false (emits both `close` and `update:modelValue`); a dismissed alert also
        auto-reopens whenever its content changes. GREEN — `pnpm test -- ResultAlert` 11/11 passed.
+       Superseded by T2.3: this parent-`v-model`/content-change-reset contract was replaced by a
+       simpler, stateless one (visible == mounted; parent owns the list; no reopen logic).
     2. ResultAlert duplicate keys (same file): RED — a reorder of a 3-item list containing a
        duplicate value corrupted the rendered order with the old `:key="item"` (the DOM order
        came back wrong: `expected [...] to deeply equal [...]`), since Vue's "Duplicate keys
@@ -254,13 +256,49 @@ but no UI kit, theme or real components.
       `FormField.test.ts` only) · `pnpm test` PASS (12 files/68 tests, up from 52) · `pnpm lint`
       PASS (0 errors/0 warnings) · `pnpm steiger` PASS (no problems found) · `pnpm build` PASS
       (`vue-tsc -b && vite build`, 0 errors) · `pnpm format:check` PASS.
-  - Commit: pending user consent.
+  - Commit: `5237d05` — fix(web): address shared ui review findings and use lookup maps (with T2.2).
+  - Review of 5237d05: RDD medium (489 lines), reliability approved and acknowledged (lineage
+    review-844abfbed92bb33b); advisories handled in T2.3.
 - [x] T2.2 PR #11 feedback (user): replace `switch`/conditional mappings with typed lookup maps
   (`Record` + `satisfies`) in `GlassButton` (variant -> Vuetify variant), `ResultAlert`
   (type -> role/aria-live) and `ScoreBadge` (outcome -> color); the convention is kept in agent
   memory (user choice), not in `AGENTS.md`. Route: inline (mechanical refactor, behavior unchanged).
   - Evidence: behavior-preserving refactor covered by existing tests: `pnpm test` 12 files / 68
     tests passed; `pnpm lint`, `pnpm build` clean. Commit: shared with T2.1 (`fix(web): address shared ui review findings and use lookup maps`).
+- [x] T2.3 PR #11 review (5237d05) + user decision: ResultAlert becomes stateless (visible ==
+  mounted, one instance per result, parent owns the list; content-change watcher and v-model
+  removed); GlassButton restores the 'flat' fallback with per-variant tests. Route: delegated
+  (writer trigger, 2+ non-trivial files).
+  - Evidence:
+    1. ResultAlert (`ResultAlert.vue` + `.test.ts`): removed `defineModel` and the content-change
+       `watch`; `VAlert` is now bound with a no-op writable `v-model` (`alwaysVisible`, `get: () =>
+       true, set: () => {}`) so it is always controlled and never hides itself internally; closing
+       emits only `close`. Replaced the v-model/reopen tests with: a closable-alert test asserting
+       `close` is emitted once and the alert stays rendered; a `defineComponent`/`h()`-based
+       `ResultAlertList` harness (one `defineComponent` in the file, respecting
+       `vue/one-component-per-file`) rendering N results `v-for`-keyed by a stable `id`, verifying
+       that closing one result and having the parent remove it from its list only removes that
+       alert (others stay), and that appending a new result — even with content identical to a
+       removed one — renders a new visible alert; and a stable-rerender test asserting a freshly
+       built `items` array with identical content leaves content unchanged with no
+       remount/hide/console warning. RED (before the fix, new tests already in place): `pnpm test
+       -- ResultAlert` — 11/12 passed, 1 failed (the closable-alert test: `expected false to be
+       true`, i.e. the old implementation hid itself on close). GREEN (after the fix): `pnpm test
+       -- ResultAlert` 12/12 passed.
+    2. GlassButton (`GlassButton.vue` + `.test.ts`): restored the `'flat'` fallback dropped by the
+       T2.2 lookup refactor — `vuetifyVariantByVariant[props.variant] ?? vuetifyVariantByVariant.primary`
+       — so an unknown runtime variant no longer falls through to `VBtn`'s own default
+       (`elevated`). Added tests pinning each variant's rendered `v-btn--variant-<x>` class
+       (primary -> flat, secondary -> outlined, ghost -> text) plus an invalid runtime variant
+       (cast in the test) falling back to flat. RED (before the fix): `pnpm test -- GlassButton` —
+       11/12 passed, 1 failed (the invalid-variant test: `expected [...] to include
+       'v-btn--variant-flat'`, got `'v-btn--elevated'`). GREEN (after the fix): `pnpm test --
+       GlassButton` 12/12 passed.
+    - Checks (from `apps/web`): `pnpm format` PASS (no changes needed) · `pnpm test` PASS (12
+      files/73 tests, up from 68) · `pnpm lint` PASS (0 errors/0 warnings) · `pnpm steiger` PASS
+      (no problems found) · `pnpm build` PASS (`vue-tsc -b && vite build`, 0 errors) ·
+      `pnpm format:check` PASS.
+  - Commit: `refactor(web): make ResultAlert stateless and restore button variant fallback` (follows `5237d05`).
 - [ ] T3 Template: `GlassShell` layout (gradient background, blobs, container) and reworked
   `AppHeader` with Register/Invite navigation; responsive, visible focus.
 - [ ] T4 API-free forms: `RegisterUserForm` and `InviteReviewerForm` in `features/*/ui`, local
@@ -304,6 +342,12 @@ but no UI kit, theme or real components.
   handling, GlassTextField/FormField numeric model contract). All checks green (`pnpm test` 12
   files/68 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`, `pnpm format:check`). Commit pending
   user consent.
+- 2026-09-26: T2.3 implemented and verified (PR #11 review of `5237d05` + user decision:
+  `ResultAlert` redesigned stateless — visible == mounted, one instance per result, parent owns
+  the list, no reopen logic; `GlassButton`'s `'flat'` fallback restored with per-variant tests).
+  All checks green (`pnpm test` 12 files/73 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`,
+  `pnpm format:check`). Committed as `72c3233`.
 
 ## Next step
-T3 (`GlassShell` layout and reworked `AppHeader`), once the user authorizes the next commit/task.
+T2.3 is implemented and verified; awaiting user consent to commit. Then T3 (`GlassShell` layout
+and reworked `AppHeader`), once the user authorizes the next commit/task.

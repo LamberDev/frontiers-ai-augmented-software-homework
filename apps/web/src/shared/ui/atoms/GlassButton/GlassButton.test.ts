@@ -126,4 +126,55 @@ describe('Given GlassButton', () => {
       expect(wrapper.find('[data-testid="icon"]').exists()).toBe(true)
     })
   })
+
+  describe('Given the variant-to-Vuetify-variant mapping', () => {
+    describe('When variant="primary" (default)', () => {
+      it('Then it renders with the Vuetify "flat" variant', () => {
+        // Arrange / Act
+        const wrapper = mountWithVuetify(GlassButton, { slots: { default: 'Primary' } })
+
+        // Assert
+        expect(wrapper.find('button').classes()).toContain('v-btn--variant-flat')
+      })
+    })
+
+    describe('When variant="secondary"', () => {
+      it('Then it renders with the Vuetify "outlined" variant', () => {
+        // Arrange / Act
+        const wrapper = mountWithVuetify(GlassButton, {
+          props: { variant: 'secondary' },
+          slots: { default: 'Secondary' },
+        })
+
+        // Assert
+        expect(wrapper.find('button').classes()).toContain('v-btn--variant-outlined')
+      })
+    })
+
+    describe('When variant="ghost"', () => {
+      it('Then it renders with the Vuetify "text" variant', () => {
+        // Arrange / Act
+        const wrapper = mountWithVuetify(GlassButton, {
+          props: { variant: 'ghost' },
+          slots: { default: 'Ghost' },
+        })
+
+        // Assert
+        expect(wrapper.find('button').classes()).toContain('v-btn--variant-text')
+      })
+    })
+
+    describe('When an invalid runtime variant is passed (bypassing the prop type)', () => {
+      it('Then it falls back to the Vuetify "flat" variant', () => {
+        // Arrange / Act
+        const wrapper = mountWithVuetify(GlassButton, {
+          props: { variant: 'unknown' as unknown as 'primary' },
+          slots: { default: 'Fallback' },
+        })
+
+        // Assert
+        expect(wrapper.find('button').classes()).toContain('v-btn--variant-flat')
+      })
+    })
+  })
 })
