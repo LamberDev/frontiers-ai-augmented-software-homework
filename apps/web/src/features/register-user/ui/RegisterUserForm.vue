@@ -118,10 +118,17 @@ function handleSubmit() {
   const hasErrors = Object.values(errors).some((messages) => (messages?.length ?? 0) > 0)
   if (hasErrors) return
 
+  // `validateRegisterUser` already rejects a `null` value above (the
+  // "required" error), so this is always a `number` here; guarded at
+  // runtime instead of an `as number` cast so a future validator change
+  // can't silently let a `null` payload through.
+  const publications = numberOfPublications.value
+  if (typeof publications !== 'number') return
+
   emit('submit', {
     userName: userName.value.trim(),
     universityName: universityName.value.trim(),
-    numberOfPublications: numberOfPublications.value as number,
+    numberOfPublications: publications,
   })
 }
 </script>

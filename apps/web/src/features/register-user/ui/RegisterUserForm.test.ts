@@ -85,6 +85,25 @@ describe('Given RegisterUserForm', () => {
     })
   })
 
+  describe('When numberOfPublications is entered then cleared', () => {
+    it('Then it shows the required error and does not emit submit', async () => {
+      // Arrange
+      const wrapper = mountWithVuetify(RegisterUserForm)
+      await findFieldInput(wrapper, 'User name').setValue('Grace Hopper')
+      await findFieldInput(wrapper, 'University name').setValue('MIT')
+      const publicationsInput = findFieldInput(wrapper, 'Number of publications')
+      await publicationsInput.setValue('5')
+      await publicationsInput.setValue('')
+
+      // Act
+      await wrapper.find('form').trigger('submit')
+
+      // Assert
+      expect(wrapper.emitted('submit')).toBeUndefined()
+      expect(wrapper.text()).toContain('Number of publications is required.')
+    })
+  })
+
   describe('When numberOfPublications is not an integer', () => {
     it('Then it shows the whole-number error and does not emit', async () => {
       // Arrange

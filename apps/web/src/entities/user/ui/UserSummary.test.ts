@@ -107,8 +107,63 @@ describe('Given UserSummary', () => {
       await wrapper.find('button.user-summary__copy').trigger('click')
 
       // Assert
-      expect(wrapper.find('[aria-live]').text()).not.toBe('')
-      expect(wrapper.find('[aria-live]').text()).not.toBe('Copied.')
+      expect(wrapper.find('[aria-live]').text()).toBe('Copying is not supported in this browser.')
+    })
+  })
+
+  describe('When the copy button is clicked and the clipboard API rejects', () => {
+    it('Then it does not throw and announces a distinct failure message', async () => {
+      // Arrange
+      const writeText = vi.fn().mockRejectedValue(new Error('denied'))
+      stubClipboard({ writeText })
+      const wrapper = mountWithVuetify(UserSummary, { props: { user: user() } })
+
+      // Act
+      await wrapper.find('button.user-summary__copy').trigger('click')
+      await vi.waitFor(() => {
+        expect(wrapper.find('[aria-live]').text()).toBe('Could not copy the user id.')
+      })
+
+      // Assert
+      expect(wrapper.find('[aria-live]').text()).toBe('Could not copy the user id.')
+    })
+  })
+
+  describe('When the copy button is clicked twice in a row and both succeed', () => {
+    it('Then the live region is cleared before the second announcement, so a repeated message is re-announced', async () => {
+      // Arrange
+      let resolveWrite: () => void = () => {}
+      const writeText = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveWrite = resolve
+          }),
+      )
+      stubClipboard({ writeText })
+      const wrapper = mountWithVuetify(UserSummary, { props: { user: user() } })
+      const button = wrapper.find('button.user-summary__copy')
+
+      // Act / Assert: first copy
+      await button.trigger('click')
+      resolveWrite()
+      await vi.waitFor(() => {
+        expect(wrapper.find('[aria-live]').text()).toBe('Copied.')
+      })
+
+      // Act: second copy, still pending on the clipboard promise
+      await button.trigger('click')
+
+      // Assert: cleared before the new outcome resolves
+      expect(wrapper.find('[aria-live]').text()).toBe('')
+
+      // Act: resolve the second copy
+      resolveWrite()
+
+      // Assert: re-announced
+      await vi.waitFor(() => {
+        expect(wrapper.find('[aria-live]').text()).toBe('Copied.')
+      })
+      expect(writeText).toHaveBeenCalledTimes(2)
     })
   })
 })

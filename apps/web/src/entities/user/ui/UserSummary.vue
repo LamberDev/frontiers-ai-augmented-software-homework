@@ -5,12 +5,15 @@
  * `actions` slot for contextual actions the page composes in (e.g. "Invite
  * as reviewer").
  *
- * Copying the user id uses `navigator.clipboard.writeText` when available;
- * when it is not (unsupported browser, insecure context, or the call
- * rejects), copying is skipped and a distinct message is announced instead,
- * so the interaction never throws.
+ * Copying the user id uses `navigator.clipboard.writeText` when available.
+ * Each attempt clears the announcement before setting a new one, so a
+ * repeated outcome (e.g. "Copied." twice in a row) is still re-announced by
+ * assistive tech, which only reacts to an actual text change in the
+ * `aria-live` region. The announcement is looked up by outcome: success,
+ * the clipboard API being unsupported, and the clipboard call rejecting
+ * each get a distinct message; the interaction never throws.
  */
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import GlassCard from '@/shared/ui/molecules/GlassCard/GlassCard.vue'
 import GlassButton from '@/shared/ui/atoms/GlassButton/GlassButton.vue'
 import { UniversityCard } from '@/entities/university/@x/user'
@@ -20,16 +23,27 @@ const props = defineProps<{ user: User }>()
 
 const copyAnnouncement = ref('')
 
+type CopyOutcome = 'success' | 'unsupported' | 'rejected'
+
+const announcementByOutcome = {
+  success: 'Copied.',
+  unsupported: 'Copying is not supported in this browser.',
+  rejected: 'Could not copy the user id.',
+} as const satisfies Record<CopyOutcome, string>
+
 async function copyUserId() {
+  copyAnnouncement.value = ''
+  await nextTick()
+
   if (!navigator.clipboard?.writeText) {
-    copyAnnouncement.value = 'Copying is not supported in this browser.'
+    copyAnnouncement.value = announcementByOutcome.unsupported
     return
   }
   try {
     await navigator.clipboard.writeText(props.user.id)
-    copyAnnouncement.value = 'Copied.'
+    copyAnnouncement.value = announcementByOutcome.success
   } catch {
-    copyAnnouncement.value = 'Copying is not supported in this browser.'
+    copyAnnouncement.value = announcementByOutcome.rejected
   }
 }
 </script>
