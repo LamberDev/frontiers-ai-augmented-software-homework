@@ -44,4 +44,5 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    # Health status comes from the HEALTHCHECK in apps/web/Dockerfile.
     restart: unless-stopped
