@@ -220,12 +220,41 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
     `Request.InvalidBody` / `Server.UnexpectedError` (exception handler) and
     `RegisterUser.NumberOfPublicationsRequired`, asserted in tests (RED observed by removing the
     extension: `KeyNotFoundException` on `code`), documented in `apps/api/AGENTS.md`.
+  - Commit (user consented): `c4db629`. RDD: assess (base `ac915bf`, slice T2c+T4b) medium,
+    `slice_budget_reached` (477 lines); consent granted; one lens (`review-reliability`);
+    approved and acknowledged (lineage `review-46bb351ad1bd1b1e`, authority burned). Reviewed
+    boundary advances to `c4db629`. Advisory findings (non-blocking): exact-type lookup misses
+    `BadHttpRequestException` subclasses and rewrites the framework's own status (413/415) to 400
+    (WARNING); the 400 body-binding contract relies on `ThrowOnBadRequest`, which is only on by
+    default in Development, and the tests run in Development only (WARNING); `Server.UnexpectedError`
+    and the wrong-type `Request.InvalidBody` codes are not asserted (SUGGESTION).
   - Malformed or non-JSON body returns 400 ProblemDetails (not 500) on both endpoints.
   - Missing or null `numberOfPublications` returns 400 keyed by `numberOfPublications`.
   - Generic 500 handler tested: status, ProblemDetails shape, no exception details leaked.
   - Result -> HTTP mapping tests for Conflict 409 and non-directory Failure 500.
-- [ ] T5 Docker: multi-stage `apps/api/Dockerfile`, `.dockerignore`, root `docker-compose.yml`
+- [ ] T4c T4b review follow-ups (user accepted, 2026-09-26):
+  - `BadHttpRequestException` matched by type hierarchy, honouring its own `StatusCode`
+    (413/415 stay as the framework set them).
+  - `ThrowOnBadRequest` enabled in every environment; a test runs the host in Production and gets
+    the 400 ProblemDetails with `Request.InvalidBody`.
+  - Assert `Server.UnexpectedError` in the 500 test and `Request.InvalidBody` in the wrong-type test.
+- [x] T5 Docker: multi-stage `apps/api/Dockerfile`, `.dockerignore`, root `docker-compose.yml`
   with the api service (web service added by `frontend-ui`); verify `docker build` and `/health`.
+  Route: delegated (writer), parent trimmed comments and upgraded the healthcheck.
+  - Written (uncommitted): SDK 10.0 build stage (restore layer cached, publish, no tests),
+    aspnet 10.0 runtime as `$APP_UID` on 8080; compose `api` service in Production with
+    `Cors__AllowedOrigins__0=http://localhost:5173`, healthcheck via bash `/dev/tcp` GET `/health`
+    expecting 200 (the runtime image has no curl or wget).
+  - Verified: `docker compose config` parses; local `dotnet publish src/PeerReview.Api -c Release
+    -p:UseAppHost=false` succeeds.
+  - Container verified (Docker 29.8.0), built from a clean `git archive` of `c4db629` plus the T5
+    files (T4c was being edited in the worktree): `docker compose build` OK; `up -d` -> health
+    `healthy`; process uid 1654 (non-root); `/health` 200 `Healthy`; `/openapi/v1.json` 200;
+    `POST /api/users` (Ada Lovelace, Harvard University, 5) 201 with Frontiers id 1327079645;
+    `POST /api/reviewers/invitations` 200 `invited: true`; CORS preflight from
+    `http://localhost:5173` allowed; `down` OK.
+  - Also observed in the container (Production): a malformed JSON body returns a bare 400 with an
+    empty body — confirms the T4b review finding that T4c fixes (`ThrowOnBadRequest`).
 - [ ] T6 README: build/run (local and Docker), API contract summary, deviations (Guid ids, null
   score not eligible, score semantics), known limitation (university get-or-create race under
   concurrent registrations, no unique index in InMemory), LLM used and why, link to `docs/ai/conversations`.
