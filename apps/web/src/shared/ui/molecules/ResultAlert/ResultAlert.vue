@@ -6,17 +6,17 @@
  * `role="alert"`/`aria-live="assertive"` for error/warning, so assistive
  * tech announces failures more urgently than confirmations.
  *
- * Visibility contract (see `odd/tasks/frontend-ui.md`, T2.1 item 1):
- * visibility is parent-controllable through `v-model` (default: visible).
- * Closing (via the `closable` close button) sets the model to `false` (so
- * both `update:modelValue` and `close` are emitted) instead of only
- * flipping Vuetify's own internal, unreachable state. A parent can always
- * re-show a dismissed alert by setting the model back to `true`; in
- * addition, whenever the alert's own content (`type`/`title`/`message`/
- * `items`) changes, a dismissed alert automatically resets to visible,
- * so a new result is never silently hidden behind a previous dismissal.
+ * Visibility contract (redesigned in T2.3, superseding T2.1 item 1 — see
+ * `odd/tasks/frontend-ui.md`): this component is stateless with respect to
+ * visibility. It is visible for exactly as long as it is mounted, and it
+ * never hides itself. The parent owns the list of results and renders one
+ * `ResultAlert` per result (e.g. `v-for` keyed by a stable result id);
+ * closing (via the `closable` close button) only emits `close`, and the
+ * parent reacts by removing that result from its list, which unmounts this
+ * instance. An alert is never reused for a different result and never
+ * reopens on its own.
  */
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 import { VAlert } from 'vuetify/components'
 
 const props = withDefaults(
@@ -38,8 +38,6 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const visible = defineModel<boolean>({ default: true })
-
 const announcementByType = {
   success: { role: 'status', ariaLive: 'polite' },
   info: { role: 'status', ariaLive: 'polite' },
@@ -50,22 +48,27 @@ const announcementByType = {
 const role = computed(() => announcementByType[props.type].role)
 const ariaLive = computed(() => announcementByType[props.type].ariaLive)
 
+// VAlert manages its own visibility internally (Vuetify's `useProxiedModel`)
+// even without a `v-model`: clicking the `closable` close button sets its
+// internal `isActive` ref to `false` and stops rendering — unless the
+// binding is "controlled" (a `model-value` prop *and* an
+// `onUpdate:modelValue` listener both present on the tag). A no-op
+// writable `v-model` keeps VAlert always controlled and always `true`, so
+// it never hides itself; only the emitted `close` event (below) signals
+// removal, which the parent performs by unmounting this instance.
+const alwaysVisible = computed({
+  get: () => true,
+  set: () => {},
+})
+
 function handleClose() {
   emit('close')
 }
-
-watch(
-  () => [props.type, props.title, props.message, props.items],
-  () => {
-    visible.value = true
-  },
-  { deep: true },
-)
 </script>
 
 <template>
   <VAlert
-    v-model="visible"
+    v-model="alwaysVisible"
     :type="type"
     :title="title"
     :text="message"

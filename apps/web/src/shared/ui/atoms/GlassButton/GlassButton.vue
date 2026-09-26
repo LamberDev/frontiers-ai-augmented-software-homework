@@ -40,7 +40,15 @@ const vuetifyVariantByVariant = {
   ghost: 'text',
 } as const satisfies Record<ButtonVariant, VBtn['$props']['variant']>
 
-const vuetifyVariant = computed(() => vuetifyVariantByVariant[props.variant])
+// Falls back to `flat` (the `primary` mapping) for any runtime variant that
+// does not match the typed union — e.g. a value passed from untyped JS, or
+// one that slips past a widened/cast type at a call site — instead of
+// silently passing `undefined` through to VBtn (which would then apply its
+// own default variant, `elevated`, an un-styled look this component never
+// intends to render).
+const vuetifyVariant = computed(
+  () => vuetifyVariantByVariant[props.variant] ?? vuetifyVariantByVariant.primary,
+)
 
 const isDisabled = computed(() => props.disabled || props.loading)
 
