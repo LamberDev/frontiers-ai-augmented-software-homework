@@ -39,6 +39,16 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
 - Handlers are plain classes registered in `AddApplication()` (no mediator package; Application
   may only use `Microsoft.Extensions.DependencyInjection.Abstractions`). Tests use hand-written
   fakes, no mocking package.
+- HTTP contract (user approved, 2026-09-26):
+  - `POST /api/users` body `{ userName, universityName, numberOfPublications }` -> 201
+    `{ userId, userName, numberOfPublications, university: { id, frontiersOrganizationId, name, score } }`;
+    400 ValidationProblem (errors per field); 404 university not found in Frontiers; 502 Frontiers
+    unavailable or invalid entry.
+  - `POST /api/reviewers/invitations` body `{ userId }` (Guid) -> 200
+    `{ userId, invited, message, reasons: [ { code, message } ] }` (`invited: false` is also 200);
+    400 ValidationProblem (empty or non-Guid `userId`); 404 user not found.
+  - Errors as RFC 9457 ProblemDetails; OpenAPI at `/openapi/v1.json`; CORS for the frontend origin
+    from configuration.
 - Result -> HTTP: Validation 400 (ValidationProblem), NotFound 404, Conflict 409, Failure 502 when
   the university directory fails, otherwise 500.
 - Commits only with the user's explicit consent (overrides ODD auto-commits); no push.
@@ -120,7 +130,15 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
     throws `NullReferenceException` instead of `InvalidEntry` (WARNING); options not validated
     (bad `BaseAddress`/`Timeout` fail lazily on first request; a base address without trailing
     slash drops its last segment) (WARNING); configured `Timeout` not asserted (SUGGESTION).
-- [ ] T2b T2 review follow-ups (user accepted, 2026-09-26), after T3:
+- [x] T2b T2 review follow-ups (user accepted, 2026-09-26), after T3. Route: delegated (writer).
+  - Evidence: RED with `dotnet test PeerReview.slnx -c Release`: Infrastructure 7 failed / 22
+    passed — null first element (`NullReferenceException`), the 5 options-validation cases (no
+    exception thrown) and the trailing-slash test (request lost the `api-prefix` segment). The
+    configured-timeout test passed immediately (timeout was already wired; test only). GREEN:
+    108 passed / 0 failed (62 + 17 + 29), re-run by the parent. Format clean, build 0 warnings /
+    0 errors, dependency rule OK. Validation rules are tested through
+    `IOptions<FrontiersOrganizationsOptions>.Value`; `ValidateOnStart()` enforces them at host
+    startup.
   - R3 null-suggestion-element: a null first array element maps to `InvalidEntry` (test).
   - R3 unvalidated-client-options: validate `FrontiersOrganizationsOptions` at startup
     (`ValidateOnStart`: absolute http(s) `BaseAddress`, `Timeout` > 0); normalize a missing
@@ -155,4 +173,6 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
 
 ## Progress
 - T1 done, committed and reviewed (approved). T1b committed (`1c47f76`). T2 committed (`9d4c79a`),
-  reviewed (approved). T3 done (commit pending user consent). Next: T2b, then T4.
+  reviewed (approved). T3 committed (`48b61d9`; RDD
+  assess base `9d4c79a`: medium, `under_budget`, 258 lines, pending in the slice). T2b done
+  (commit pending user consent). Next: T4.
