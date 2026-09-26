@@ -12,6 +12,11 @@ builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 
+// Body-binding failures must always reach the top-level exception handler, in every environment
+// (the framework only throws BadHttpRequestException, instead of writing a bare, bodyless status
+// code directly, when this is enabled), so the client always gets a ProblemDetails response.
+builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
+
 const string FrontendCorsPolicy = "Frontend";
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 

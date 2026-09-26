@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -43,6 +45,25 @@ public class ExceptionHandlerTests : IClassFixture<PeerReviewApiFactory>
         Assert.DoesNotContain("secret detail", body);
         Assert.DoesNotContain("InvalidOperationException", body);
         Assert.DoesNotContain("StackTrace", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Server.UnexpectedError", root.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task PostUsers_InProductionEnvironmentWithMalformedJsonBody_Returns400ProblemDetailsWithInvalidBodyCode()
+    {
+        // RouteHandlerOptions.ThrowOnBadRequest is only on by default in Development; this proves
+        // it is explicitly enabled for every environment (Program.cs), so a malformed body still
+        // reaches this exception handler, instead of a bare, bodyless 400 written directly by
+        // minimal API's own body-binding short-circuit.
+        using var client = _factory.WithWebHostBuilder(builder => builder.UseEnvironment("Production")).CreateClient();
+        var content = new StringContent("{ this is not valid json", Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync("/api/users", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Equal("Request.InvalidBody", JsonDocument.Parse(body).RootElement.GetProperty("code").GetString());
     }
 
     private sealed class ThrowingUniversityDirectory : IUniversityDirectory

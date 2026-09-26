@@ -19,6 +19,10 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   `apps/api/AGENTS.md` updates.
 - Out: frontend code and the web Docker image (feature `frontend-ui`), real database, auth.
 
+## Authority
+- From 2026-09-26 the user authorizes commits, push, granting Gentle AI reviews and opening PRs
+  without asking each time; merges still need an explicit yes.
+
 ## Constraints and decisions
 - Contract ids (user decision, 2026-09-25): the HTTP contract exposes the domain `Guid` (v7) as
   `userId`. Deliberate deviation from the brief's `InviteReviewer(int UserId)`, documented in the
@@ -232,7 +236,18 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   - Missing or null `numberOfPublications` returns 400 keyed by `numberOfPublications`.
   - Generic 500 handler tested: status, ProblemDetails shape, no exception details leaked.
   - Result -> HTTP mapping tests for Conflict 409 and non-directory Failure 500.
-- [ ] T4c T4b review follow-ups (user accepted, 2026-09-26):
+- [x] T4c T4b review follow-ups (user accepted, 2026-09-26). Route: delegated (writer).
+  - Evidence: RED with `dotnet test tests/PeerReview.Api.IntegrationTests -c Release`: 4 failed /
+    36 passed — 413/415/422 exceptions rewritten to 400, and the Production malformed-body test got
+    an empty body. `code` assertions passed immediately (tests only). GREEN: 152 passed / 0 failed
+    (62 + 17 + 33 + 40), re-run by the parent. Format clean, build 0 warnings / 0 errors.
+  - Codes: 400 `Request.InvalidBody`, 413 `Request.PayloadTooLarge`, 415
+    `Request.UnsupportedMediaType`, other 4xx `Request.Invalid`, 500 `Server.UnexpectedError`.
+  - Observed framework behavior: a `text/plain` body gets a bare 415 written by minimal API binding
+    itself (no exception, handler not reached), with or without `ThrowOnBadRequest`; documented and
+    tested as-is. Possible later improvement: `UseStatusCodePages` to fill empty error bodies.
+  - Docker check (worktree build, Production): malformed JSON -> 400 ProblemDetails
+    `Request.InvalidBody`; missing `numberOfPublications` -> 400 keyed by the field.
   - `BadHttpRequestException` matched by type hierarchy, honouring its own `StatusCode`
     (413/415 stay as the framework set them).
   - `ThrowOnBadRequest` enabled in every environment; a test runs the host in Production and gets
@@ -270,6 +285,11 @@ frontend (`odd/tasks/frontend-ui.md`) is blocked on the API contract.
   - Evidence: `docker compose config` shows `host_ip: 127.0.0.1`; clean `git archive` of
     `4333666` plus the edited files: `docker compose up -d --build --wait` -> `Healthy`,
     `docker port` -> `8080/tcp -> 127.0.0.1:8080`, `/health` 200; `down` OK.
+  - Commit (user consented): `4dbc9c4`. RDD: assess (base `4333666`) high (`process_boundary` in
+    compose); consent granted; four lenses; approved with no findings and acknowledged (lineage
+    `review-7a3390115af0482a`, authority burned). Reviewed boundary advances to `4dbc9c4`. The
+    uncommitted T4c work was parked in a `git stash` during this review (its untracked test file
+    blocked the preflight) and restored afterwards.
 - [ ] T6 README: build/run (local and Docker), API contract summary, deviations (Guid ids, null
   score not eligible, score semantics), floating `10.0` base image tags (patch updates vs
   reproducibility), known limitation (university get-or-create race under

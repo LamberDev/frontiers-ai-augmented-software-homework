@@ -93,6 +93,12 @@ Application result records, never domain entities, over HTTP.
   - `400` `ProblemDetails` — a malformed or type-mismatched JSON body (e.g. a non-JSON payload, or
     `"numberOfPublications": "abc"`) fails model binding before the handler runs and is caught by
     the top-level exception handler as a `BadHttpRequestException`; see below.
+  - `415` — an unsupported request `Content-Type` (e.g. `text/plain`) is rejected by minimal API's
+    own JSON body binding before the handler runs, with a bare, empty-body `415` response written
+    directly to the response: no exception is thrown, so this one never reaches the top-level
+    exception handler and carries no `ProblemDetails` envelope or `code`, regardless of
+    `RouteHandlerOptions.ThrowOnBadRequest` (verified against .NET 10.0.401; a framework detail, not
+    a documented contract).
   - `404` `ProblemDetails` — university not found in Frontiers (`UniversityDirectory.NotFound`).
   - `502` `ProblemDetails` — Frontiers unavailable or returned invalid data
     (`UniversityDirectory.Unavailable` / `UniversityDirectory.InvalidEntry`).
@@ -105,14 +111,21 @@ Application result records, never domain entities, over HTTP.
 - Every error is an RFC 9457 `ProblemDetails`/`ValidationProblem` (`AddProblemDetails()`), including
   framework body-binding failures and unhandled exceptions. A single top-level
   `app.UseExceptionHandler(...)` in `Program.cs`, delegating to
-  `PeerReview.Api.SharedKernel.Http.ExceptionHttpExtensions.WriteProblemAsync`, maps a
-  `BadHttpRequestException` (thrown by minimal API model binding on a malformed or type-mismatched
-  JSON body, before any endpoint handler runs) to its own `400` `ProblemDetails` with a generic
-  `detail` ("The request body is invalid."); every other exception stays a generic `500`. Neither
-  case ever leaks the exception's message or stack trace. Every error carries a stable `code`
-  extension: the Application/Domain error code for mapped results, `Request.InvalidBody` for a
-  body-binding failure, `RegisterUser.NumberOfPublicationsRequired` for a missing
-  `numberOfPublications`, and `Server.UnexpectedError` for an unhandled exception.
+  `PeerReview.Api.SharedKernel.Http.ExceptionHttpExtensions.WriteProblemAsync`, matches a thrown
+  exception by type hierarchy (`exception is BadHttpRequestException bad`, not an exact-type check,
+  since the type is not sealed) and honours the exception's own `bad.StatusCode` rather than forcing
+  `400`: a `400` (malformed or type-mismatched JSON body) gets `Request.InvalidBody` and the generic
+  `detail` "The request body is invalid."; other framework client statuses the exception may carry
+  keep their own status with a stable `code` and no `detail` (`413` ->
+  `Request.PayloadTooLarge`, `415` -> `Request.UnsupportedMediaType`), and any other 4xx not in that
+  lookup falls back to `Request.Invalid`. Every other exception stays a generic `500`
+  `Server.UnexpectedError`. No case ever leaks the exception's message or stack trace.
+  `RouteHandlerOptions.ThrowOnBadRequest = true` is configured in `Program.cs` for every
+  environment, so a body-binding failure always throws (and reaches this handler) instead of only
+  writing a bare status code directly, which is the framework's default outside `Development`.
+  `RegisterUser.NumberOfPublicationsRequired` is a separate, endpoint-level code for a missing
+  `numberOfPublications` (checked before the handler runs); the Application/Domain error code is
+  used for every other mapped result.
 - Result -> HTTP mapping lives in `PeerReview.Api.SharedKernel.Http.ResultHttpExtensions`
   (`Result<T>.ToHttpResult(...)`). `SharedKernel/Http` mirrors the Domain's own `SharedKernel`
   naming: the mapping is genuinely cross-cutting (every endpoint uses it), not owned by one
