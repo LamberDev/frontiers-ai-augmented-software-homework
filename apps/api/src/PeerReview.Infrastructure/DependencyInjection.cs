@@ -1,14 +1,18 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using PeerReview.Application.Abstractions.Persistence;
+using PeerReview.Application.Universities;
 using PeerReview.Infrastructure.Persistence;
 using PeerReview.Infrastructure.Persistence.Repositories;
+using PeerReview.Infrastructure.Universities.FrontiersOrganizations;
 
 namespace PeerReview.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<PeerReviewDbContext>(options =>
             options.UseInMemoryDatabase(PeerReviewDbContext.DatabaseName));
@@ -16,6 +20,44 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<PeerReviewDbContext>());
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUniversityRepository, UniversityRepository>();
+
+        services.AddOptions<FrontiersOrganizationsOptions>()
+            .Bind(configuration.GetSection(FrontiersOrganizationsOptions.SectionName))
+            .Validate(
+                options => Uri.TryCreate(options.BaseAddress, UriKind.Absolute, out var baseAddress)
+                    && (baseAddress.Scheme == Uri.UriSchemeHttp || baseAddress.Scheme == Uri.UriSchemeHttps),
+                "FrontiersOrganizations:BaseAddress must be an absolute http or https URI.")
+            .Validate(
+                // A malformed BaseAddress is already reported by the rule above; only fire this
+                // one when it parses but still carries a query or fragment, so each malformed
+                // input surfaces exactly one failure message.
+                options => !Uri.TryCreate(options.BaseAddress, UriKind.Absolute, out var baseAddress)
+                    || (baseAddress.Query.Length == 0 && baseAddress.Fragment.Length == 0),
+                "FrontiersOrganizations:BaseAddress must not contain a query string or fragment.")
+            .Validate(
+                // Bounds match HttpClient.Timeout itself (> TimeSpan.Zero, <=
+                // TimeSpan.FromMilliseconds(int.MaxValue)), so Timeout.InfiniteTimeSpan (which
+                // HttpClient accepts to mean "no timeout") is rejected here: an unbounded call to
+                // an upstream service makes no sense for this adapter.
+                options => options.Timeout > TimeSpan.Zero
+                    && options.Timeout <= TimeSpan.FromMilliseconds(int.MaxValue),
+                "FrontiersOrganizations:Timeout must be greater than zero and at most int.MaxValue milliseconds.")
+            .ValidateOnStart();
+
+        services.AddHttpClient<IUniversityDirectory, FrontiersUniversityDirectory>((provider, client) =>
+        {
+            var options = provider.GetRequiredService<IOptions<FrontiersOrganizationsOptions>>().Value;
+
+            // Normalize a BaseAddress without a trailing slash so HttpClient resolves the relative
+            // "v1/organizations/elasticSuggestions" path underneath it, instead of replacing its
+            // last path segment (standard Uri combination semantics for a relative reference).
+            var baseAddress = options.BaseAddress.EndsWith('/')
+                ? options.BaseAddress
+                : options.BaseAddress + "/";
+
+            client.BaseAddress = new Uri(baseAddress);
+            client.Timeout = options.Timeout;
+        });
 
         return services;
     }
