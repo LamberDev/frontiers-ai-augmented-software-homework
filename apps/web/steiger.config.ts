@@ -4,24 +4,33 @@ import { defineConfig } from 'steiger'
 export default defineConfig([
   ...fsd.configs.recommended,
   {
-    // Scaffolding-only relaxation: `entities/user` and `entities/university` are pure
-    // type placeholders (see apps/web/AGENTS.md) with no consumers yet, because this
-    // task ships structure only, no business/form code (out of scope per
-    // odd/tasks/monorepo-scaffold.md). They gain real references once the
-    // RegisterUser/InviteReviewer features consume them.
+    // Updated 2026-09-26 (T8): `entities/user`/`entities/university` are now both
+    // referenced by real UI (`RegisterUserPage` renders `UserSummary`, which embeds
+    // `UniversityCard`), but `fsd/insignificant-slice` still flags each with "only one
+    // reference ... consider merging" — this app has exactly one page presenting a
+    // `User`, and `entities/university` is only ever reached through `entities/user`
+    // (its `@x` cross-import, see `entities/university/@x/user.ts`), never referenced
+    // directly by a widget/page. Kept as a deliberate, permanent relaxation rather than
+    // folding these entities into `pages/register-user`: they are a distinct
+    // atomic-design level (see the mapping table in `odd/tasks/frontend-ui.md`) with
+    // their own model/UI/tests, independent of this app's current page count.
     files: ['./src/entities/**'],
     rules: {
       'fsd/insignificant-slice': 'off',
     },
   },
   {
-    // Scaffolding-only relaxation: `features/register-user` and
-    // `features/invite-reviewer` intentionally have no segments yet (no forms, no API
-    // calls in this task). They will gain a `ui`/`model` segment once that behavior is
-    // implemented; adding an empty placeholder segment now would just be fake code.
+    // Updated 2026-09-26 (T8): both feature slices are now wired into their page
+    // (`RegisterUserPage`/`InviteReviewerPage`), but `fsd/insignificant-slice` still
+    // flags each as "only one reference ... consider merging" because this app has
+    // exactly one page per form. Kept as a deliberate, permanent relaxation rather
+    // than folding the forms into their pages: `RegisterUserForm`/`InviteReviewerForm`
+    // are a distinct atomic-design level (organisms, per the mapping table in
+    // `odd/tasks/frontend-ui.md`) with their own `model`/`api` segments and unit tests,
+    // independent of how many pages currently render them.
     files: ['./src/features/**'],
     rules: {
-      'fsd/no-segmentless-slices': 'off',
+      'fsd/insignificant-slice': 'off',
     },
   },
   {

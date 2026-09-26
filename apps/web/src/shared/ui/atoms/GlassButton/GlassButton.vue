@@ -7,9 +7,15 @@
  * - `secondary`: outlined, glass-tinted button (see `.glass-surface` in
  *   `shared/ui/styles/glass.css`).
  * - `ghost`: minimal text-only button.
+ *
+ * `to` renders this as a navigation link (Vuetify's own `VBtn` `to`/router
+ * support) instead of a `<button>` — e.g. a page-to-page action styled as a
+ * button, such as "Invite as reviewer" navigating to the invite page. `type`
+ * is only meaningful without `to`.
  */
 import { computed } from 'vue'
 import { VBtn } from 'vuetify/components'
+import type { RouteLocationRaw } from 'vue-router'
 
 const props = withDefaults(
   defineProps<{
@@ -18,6 +24,7 @@ const props = withDefaults(
     disabled?: boolean
     type?: 'button' | 'submit'
     block?: boolean
+    to?: RouteLocationRaw
   }>(),
   {
     variant: 'primary',
@@ -25,6 +32,7 @@ const props = withDefaults(
     disabled: false,
     type: 'button',
     block: false,
+    to: undefined,
   },
 )
 
@@ -60,6 +68,7 @@ function handleClick(event: MouseEvent) {
 <template>
   <VBtn
     :type="type"
+    :to="to"
     color="primary"
     :variant="vuetifyVariant"
     :loading="loading"

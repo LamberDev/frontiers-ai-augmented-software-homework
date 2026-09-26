@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { mountWithVuetify } from '@/shared/lib/test/mountWithVuetify'
+import { createMemoryHistory, createRouter } from 'vue-router'
+import { mountWithVuetify } from '@test/support/mountWithVuetify'
 import GlassButton from './GlassButton.vue'
+
+async function createTestRouter() {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', component: { template: '<div />' } },
+      { path: '/invite', name: 'invite-reviewer', component: { template: '<div />' } },
+    ],
+  })
+  await router.push('/')
+  await router.isReady()
+  return router
+}
 
 describe('Given GlassButton', () => {
   describe('When mounted with default props', () => {
@@ -124,6 +138,37 @@ describe('Given GlassButton', () => {
 
       // Assert
       expect(wrapper.find('[data-testid="icon"]').exists()).toBe(true)
+    })
+  })
+
+  describe('When a "to" prop is passed', () => {
+    it('Then it renders as a router link pointing to that route instead of a native button', async () => {
+      // Arrange
+      const router = await createTestRouter()
+
+      // Act
+      const wrapper = mountWithVuetify(GlassButton, {
+        props: { to: { name: 'invite-reviewer', query: { userId: 'u1' } } },
+        slots: { default: 'Invite as reviewer' },
+        global: { plugins: [router] },
+      })
+
+      // Assert
+      const link = wrapper.find('a')
+      expect(link.exists()).toBe(true)
+      expect(link.attributes('href')).toBe('/invite?userId=u1')
+      expect(wrapper.find('button').exists()).toBe(false)
+    })
+  })
+
+  describe('When no "to" prop is passed', () => {
+    it('Then it still renders a native button', () => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(GlassButton, { slots: { default: 'Register' } })
+
+      // Assert
+      expect(wrapper.find('a').exists()).toBe(false)
+      expect(wrapper.find('button').exists()).toBe(true)
     })
   })
 

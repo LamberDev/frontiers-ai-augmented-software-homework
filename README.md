@@ -113,18 +113,42 @@ dotnet test PeerReview.slnx -c Release
 
 ### Web
 
-The frontend UI (forms, glass-morphism styling, API wiring) is delivered by the `frontend-ui`
-feature, which is still in progress: until it wires the API, the pages are placeholders. To run
-it, from `apps/web`:
+From `apps/web`:
 
 ```bash
 pnpm install
-pnpm dev
+cp .env.example .env   # VITE_API_URL=http://localhost:5112 (the API's `http` launch profile)
+pnpm dev               # http://localhost:5173
 ```
 
-Vite serves it on `http://localhost:5173`. The app reads the API base URL from `VITE_API_URL`
-(see [`apps/web/AGENTS.md`](apps/web/AGENTS.md#configuration)); set it in an `.env` file, e.g.
-`VITE_API_URL=http://localhost:8080`.
+The app reads the API base URL from `VITE_API_URL` (see
+[`apps/web/AGENTS.md`](apps/web/AGENTS.md#configuration)). Point it at
+`http://localhost:8080` instead when the API runs with `docker compose`. The API's CORS policy
+only allows the origin `http://localhost:5173`, so keep Vite's default port.
+
+Checks (from `apps/web`, all run in CI):
+
+```bash
+pnpm build     # vue-tsc -b && vite build
+pnpm lint
+pnpm steiger
+pnpm test
+pnpm format:check
+```
+
+#### Web Docker image
+
+`apps/web/Dockerfile` builds the production bundle and serves it with unprivileged nginx on port
+8080. The API origin is baked into the bundle at build time, so the build argument is required
+(the build fails without it):
+
+```bash
+docker build --build-arg VITE_API_URL=http://localhost:8080 -t peer-review-web apps/web
+docker run -p 127.0.0.1:5173:8080 peer-review-web
+```
+
+Open `http://localhost:5173`; publishing on port 5173 keeps the origin allowed by the API's CORS
+policy.
 
 ## API contract summary
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mountWithVuetify } from '@/shared/lib/test/mountWithVuetify'
+import { mountWithVuetify } from '@test/support/mountWithVuetify'
 import GlassCard from './GlassCard.vue'
 
 describe('Given GlassCard', () => {

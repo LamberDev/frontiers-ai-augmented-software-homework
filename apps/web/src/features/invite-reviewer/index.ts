@@ -1,7 +1,16 @@
 /**
  * Public API for the invite-reviewer feature.
- *
- * Scaffolding only: the InviteReviewer form/submission behavior lands in a
- * later feature. No forms or API calls belong here yet.
  */
-export {}
+export { default as InviteReviewerForm } from './ui/InviteReviewerForm.vue'
+export { validateInviteReviewer } from './model/validateInviteReviewer'
+export { inviteReviewer } from './api/inviteReviewer'
+export { useInviteReviewer } from './model/useInviteReviewer'
+export type { InviteReviewerStatus, UseInviteReviewerOptions } from './model/useInviteReviewer'
+export type {
+  InviteReviewerField,
+  InviteReviewerFieldErrors,
+  InviteReviewerFormValues,
+  InviteReviewerInput,
+  InvitationReason,
+  InvitationResult,
+} from './model/types'
