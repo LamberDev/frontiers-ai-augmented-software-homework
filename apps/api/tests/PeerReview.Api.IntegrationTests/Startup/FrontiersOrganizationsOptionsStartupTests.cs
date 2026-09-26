@@ -10,8 +10,11 @@ namespace PeerReview.Api.IntegrationTests.Startup;
 /// <see cref="IOptions{TOptions}"/>&lt;FrontiersOrganizationsOptions&gt;. Uses its own bare
 /// <see cref="WebApplicationFactory{TEntryPoint}"/> (not the shared <see cref="PeerReviewApiFactory"/>)
 /// because the point under test is the composition root's own validation, not any test-only
-/// service swap.
+/// service swap. It runs outside the parallel test collections: WebApplicationFactory captures the
+/// minimal-API host through a process-wide listener, so a host started concurrently by another test
+/// class can be picked up instead of this failing one.
 /// </summary>
+[Collection(nameof(HostStartupCollection))]
 public class FrontiersOrganizationsOptionsStartupTests
 {
     [Fact]
