@@ -426,7 +426,8 @@ but no UI kit, theme or real components.
     form + form test + index)), naturally above the ~400-line heuristic — two full forms with
     BDD test coverage for validation timing, server/local error precedence, a11y and loading
     state, not split artificially.
-  - Commit: pending user consent.
+  - Commit: `aa3da40` — feat(web): add register user and invite reviewer forms. Reviewed
+    together with T5 as commit range `8696b4b..aa3da40` — see T5's commit note below.
 - [x] T5 Result views in `entities/*/ui`: `UserSummary` (userName, publications, copyable userId)
   and `UniversityCard` (name, Frontiers organization id, `ScoreBadge` with threshold 60 and
   `label="University score"`, null score -> Unknown); model types aligned with the contract.
@@ -479,13 +480,150 @@ but no UI kit, theme or real components.
     (`vue-tsc -b && vite build`, 0 errors) · `pnpm format:check` PASS.
   - Size: ~394 authored lines across 10 files, close to the ~400-line heuristic — not split
     artificially (two entity slices with real UI, tests and a cross-import public API file).
-  - Commit: pending user consent.
-- [ ] T6 API layer: `shared/api` parses RFC 9457 problem responses (JSON or empty body, e.g.
+  - Commit: `8696b4b` — feat(web): add user and university result views. Review of commit range
+    `8696b4b..aa3da40` (covers this task and T4): RDD medium, 1468 lines, reliability lens
+    approved and acknowledged (lineage `review-6e35c2d3900ad054`); advisory findings accepted as
+    mandatory follow-ups, recorded as T5.1 below.
+- [x] T5.1 Review follow-ups (from the `8696b4b..aa3da40` review above): `entities/user`'s
+  `id`/`userId` mapping made explicit via a `toUser` mapper (landed with T6, see its Files list);
+  `UserSummary` copy distinguishes a rejected clipboard promise from an unsupported one, and
+  clears its live region before each attempt so a repeated outcome is re-announced;
+  `RegisterUserForm` guards its submit payload's numeric field at runtime instead of an `as`
+  cast. Route: inline (doc-comment fix + two already-understood component edits with their
+  tests; no new design work, under the 4-file mapping/writer-trigger thresholds).
+  - Evidence:
+    1. `entities/user/model/types.ts`: WARNING — the doc comment claimed `User`'s fields matched
+       the wire format verbatim, which is false once `toUser` (T6) renames the API's `userId` to
+       the domain's `id`. Fixed the doc comment only (no behavior change, no test needed); the
+       mapping itself and its pinning test (`toUser.test.ts`) are T6.
+    2. `UserSummary.vue` + `.test.ts`: WARNING — added a test where
+       `navigator.clipboard.writeText` rejects. RED: `pnpm test -- UserSummary` 6/8 passed, 2
+       failed (the new rejected-clipboard test: `expected 'Copying is not supported in this
+       browser.' to be 'Could not copy the user id.'`; a new repeated-copy test:
+       `expected 'Copied.' to be ''`). Fix: an `announcementByOutcome` lookup map
+       (`success`/`unsupported`/`rejected`), and `copyUserId` now clears
+       `copyAnnouncement` and awaits `nextTick()` before checking the outcome, so a repeated
+       identical message is re-announced by assistive tech. GREEN: `pnpm test -- UserSummary`
+       8/8 passed.
+    3. `RegisterUserForm.vue` + `.test.ts`: SUGGESTION — added a characterization test (type a
+       number, clear it, submit): already passed before the change (`validateRegisterUser`
+       already rejects `null` as "Number of publications is required." before the emit is
+       reached), confirming `GlassTextField`'s numeric contract (T2.1) really does emit `null` on
+       clear. Replaced the `numberOfPublications.value as number` cast at the emit site with an
+       explicit `typeof publications !== 'number'` runtime guard (early-returns instead of
+       trusting the cast), behavior-preserving: `pnpm test -- RegisterUserForm` 11/11 passed
+       before and after.
+  - Checks (from `apps/web`): all covered by T6/T7's full-suite run below (`pnpm test` 26
+    files/157 tests, `pnpm lint`, `pnpm steiger`, `pnpm build`, `pnpm format:check`), run once
+    against the combined working tree rather than repeated per task.
+  - Commit: pending (see the Next step note for how this task's files split from T6/T7's).
+- [x] T6 API layer: `shared/api` parses RFC 9457 problem responses (JSON or empty body, e.g.
   415) into a typed `ApiError` (`status`, `code`, `title`, `detail`, `fieldErrors`); typed
   `registerUser()` / `inviteReviewer()` calls in the feature `api` segments on `httpClient`.
-- [ ] T7 Stateful composables in `features/*/model`: `useRegisterUser` / `useInviteReviewer`
+  Route: delegated (writer trigger, 2+ non-trivial files).
+  - `ApiError`: a `class extends Error` (not a discriminated result) — `{ status, code?, title?,
+    detail?, fieldErrors: Record<string, string[]> }` — chosen over a result type so every
+    caller uses one uniform `try`/`catch` (matching the codebase's existing exception-based
+    style, e.g. `getApiUrl()`'s throw), rather than mixing thrown and returned error paths.
+    `requestJson<T>(path, init)` (`shared/api/requestJson.ts`) is the one JSON request/response
+    helper on top of `httpClient`; every failure mode converts to a rejected `ApiError`: a
+    non-2xx response (parsed from `application/problem+json`/JSON when present, tolerating an
+    empty or non-JSON body down to `{ status }` only), a network failure (`fetch` itself
+    rejecting — status 0, `code: 'Network.Unavailable'`), or a missing `VITE_API_URL` (detected
+    by calling `getApiUrl()` directly before the fetch, not by sniffing the rejection message —
+    status 0, `code: 'Config.MissingApiUrl'`).
+  - `toUser` mapper decision: placed in `entities/user/model/toUser.ts` (not
+    `features/register-user/api/`), because the mapping (`userId` -> `id`) is owned by the
+    entity it produces — any future feature receiving a user-shaped DTO can reuse it instead of
+    duplicating the field rename; the DTO type (`entities/user/model/dto.ts`) reuses the
+    `University` domain type as-is for the nested `university` object (its fields already match
+    the wire format field-for-field, so no separate university DTO/mapping is needed). Both
+    exported from `entities/user`'s public API.
+  - Files: `shared/api/ApiError.ts` (+new), `requestJson.ts` (+new) + `.test.ts`, `index.ts`
+    (updated); `entities/user/model/dto.ts` (+new), `toUser.ts` (+new) + `.test.ts`, `index.ts`
+    (updated); `features/register-user/api/registerUser.ts` (+new) + `.test.ts`, `index.ts`
+    (updated); `features/invite-reviewer/model/types.ts` (updated, `+InvitationResult`,
+    `+InvitationReason`), `api/inviteReviewer.ts` (+new) + `.test.ts`, `index.ts` (updated).
+  - RED (`requestJson`, before implementation): `pnpm test -- requestJson` failed, `Failed to
+    resolve import "./requestJson"`. GREEN: 1 file/8 tests passed (missing config rejects without
+    calling `fetch`; network rejection; success mapping + request method/headers/body; 400
+    validation problem -> fieldErrors; 404 with code and no `errors` dict -> empty fieldErrors;
+    502 with code; 415 empty body -> status only; bare 400 non-JSON body -> status only).
+  - RED (`toUser`, before implementation): `pnpm test -- toUser` failed, `Failed to resolve
+    import "./toUser"`. GREEN: 1 file/1 test passed (wire `userId` -> domain `id`, rest as-is).
+  - RED (`registerUser`/`inviteReviewer` api, before implementation): both suites failed, `Failed
+    to resolve import`. GREEN: `registerUser.test.ts` 2/2 (POSTs to `/api/users` with the mapped
+    body, resolves with the mapped `User`; a validation-problem rejection carries `fieldErrors`);
+    `inviteReviewer.test.ts` 3/3 (POSTs to `/api/reviewers/invitations`; resolves with
+    `invited: true` and `invited: false` + `reasons` alike, both `200`; a not-found rejection
+    carries the code).
+  - Deviation: `registerUser.test.ts`'s first draft used the same `vi.resetModules()` + dynamic
+    `import()` per test pattern as `shared/api`/`shared/config`'s tests (needed there because
+    those tests vary the env var *across* tests in one file). Both of this file's tests use the
+    same `VITE_API_URL` value, so that reset bought nothing but re-triggered
+    `registerUser.ts -> @/entities/user`'s heavier transform (pulls in `UserSummary.vue`'s
+    Vuetify component tree) on every test; under the full 26-file suite's CPU contention this
+    intermittently exceeded even a raised 20s per-test timeout. Rewritten with a plain static
+    import and `vi.stubEnv`/`vi.stubGlobal` per test (no reset needed: `getApiUrl()` reads the
+    env var uncached on every call) — confirmed stable across 3 consecutive full-suite runs
+    afterwards (157/157 each time).
+  - Checks: see T7 below (verified together against the combined working tree).
+  - Commit: pending (see the Next step note for how this task's files split from T5.1/T7's).
+- [x] T7 Stateful composables in `features/*/model`: `useRegisterUser` / `useInviteReviewer`
   (`idle`/`loading`/`success`/`error` via lookup maps), server `errors` mapped to form fields,
-  results appended as one `ResultAlert` per result (stateless contract from T2.3).
+  results appended as one `ResultAlert` per result (stateless contract from T2.3). Route:
+  delegated (writer trigger, 2+ non-trivial files).
+  - `ResultAlertEntry` (new `shared/ui/molecules/ResultAlert/ResultAlertEntry.ts`, exported from
+    `shared/ui`): `{ id, type, title, message?, items? }`, one entry per `ResultAlert` instance
+    (T2.3's stateless contract) — shared by both composables instead of duplicated per feature,
+    since it is exactly `ResultAlert`'s own prop shape plus a stable `id` key.
+  - Both composables take their api function as an optional constructor parameter (e.g.
+    `useRegisterUser({ registerUser })`), defaulting to the real API call, for dependency
+    injection in tests instead of `vi.mock`.
+  - `useRegisterUser`: on success, appends a `success` entry ("User registered" /
+    "`<userName>` was registered with `<university name>`."), sets `lastUser`, clears
+    `fieldErrors`. On an `ApiError` with `fieldErrors`, narrows the server's free-form keys down
+    to the form's known fields (`toRegisterUserFieldErrors`, ignoring any unexpected key) and
+    appends a generic "Please fix the highlighted fields." error entry. On any other `ApiError`,
+    a `FRIENDLY_TITLE_BY_CODE` lookup map (by `code`) supplies the title, falling back to
+    "Something went wrong. Please try again."; the `ApiError`'s own `detail` (server-controlled
+    text from the same ProblemDetails contract, not raw exception internals) is included as the
+    entry's `message` when present.
+  - `useInviteReviewer`: same shape, plus `lastInvitation`. A successful request (`invited` true
+    or false) always sets `status` to `success` — the request itself succeeded either way — while
+    a `RESULT_TYPE_BY_INVITED` lookup map decides the *entry's* type: `invited: true` ->
+    `success` ("Invitation sent", the API's own `message`); `invited: false` -> **`warning`**
+    (chosen over `error`, since the request succeeded and the user is simply ineligible) with the
+    API's `reasons[].message` as `items`. `ApiError` mapping mirrors `useRegisterUser`, with
+    `Reviewer.UserNotFound` -> "User not found." and field errors narrowed to `userId`.
+  - Double-submission guard: `submit()` returns immediately if `status` is already `'loading'`;
+    since `status` is set to `'loading'` synchronously before the first `await`, a second
+    synchronous call is guaranteed to see it and no-op, so the test needs no timing tricks.
+  - Files: `features/register-user/model/useRegisterUser.ts` (+new) + `.test.ts`, `index.ts`
+    (updated); `features/invite-reviewer/model/useInviteReviewer.ts` (+new) + `.test.ts`,
+    `index.ts` (updated); `shared/ui/molecules/ResultAlert/ResultAlertEntry.ts` (+new),
+    `shared/ui/index.ts` (updated).
+  - RED (`useRegisterUser`, before implementation): `pnpm test -- useRegisterUser` failed,
+    `Failed to resolve import "./useRegisterUser"`. GREEN: 1 file/8 tests passed (idle initial
+    state; success sets lastUser/clears fieldErrors/appends a success result; server
+    fieldErrors — including an unknown key ignored — set and appends an error result; a known
+    ApiError code appends a friendly title + `detail` as message; an unmapped code falls back to
+    the default title; `Network.Unavailable` gets its own friendly title; a second concurrent
+    submit is ignored, API called once; `dismiss` removes only the matching result).
+  - RED (`useInviteReviewer`, before implementation): `pnpm test -- useInviteReviewer` failed,
+    `Failed to resolve import "./useInviteReviewer"`. GREEN: 1 file/7 tests passed (idle initial
+    state; `invited: true` -> success result with the API message; `invited: false` -> warning
+    result with `reasons` as `items`; server fieldErrors set and appends an error result;
+    `Reviewer.UserNotFound` -> "User not found."; double-submission guard; `dismiss`).
+  - Checks (from `apps/web`, covering T5.1, T6 and T7 together): `pnpm format` PASS (formatted
+    the new files only) · `pnpm test` PASS (26 files/157 tests, up from 20 files/125 before T5.1;
+    confirmed stable across 3 consecutive full-suite runs, see the T6 deviation note above) ·
+    `pnpm lint` PASS (0 errors/0 warnings, after removing 4 `no-unused-vars` on an
+    only-used-as-a-type `ApiError` import in `requestJson.test.ts`'s later assertions — fixed by
+    adding a `rejects.toBeInstanceOf(ApiError)` assertion alongside each, which also strengthens
+    those tests) · `pnpm steiger` PASS (no problems found) · `pnpm build` PASS
+    (`vue-tsc -b && vite build`, 0 errors) · `pnpm format:check` PASS.
+  - Commit: pending.
 - [ ] T8 Pages: `RegisterUserPage` (form + registered user/university + "Invite as reviewer"
   link to `/invite?userId=<id>`) and `InviteReviewerPage` (form prefilled from the query + one
   alert per invitation outcome with reasons). Update `AGENTS.md` (web usage notes).
@@ -556,8 +694,8 @@ Defined by the infrastructure/use-cases work; the frontend consumes it as-is.
   field-error precedence rule). All checks green (`pnpm test` 20 files/125 tests, `pnpm lint`,
   `pnpm steiger`, `pnpm build`, `pnpm format:check`). `steiger.config.ts`'s obsolete
   `fsd/no-segmentless-slices` relaxation for `features/**` replaced with a narrower, still-needed
-  `fsd/insignificant-slice` one (removable once T8 wires the forms into a page). Commit pending
-  user consent.
+  `fsd/insignificant-slice` one (removable once T8 wires the forms into a page). Committed as
+  `aa3da40`.
 - 2026-09-26: T5 implemented and verified (`University`/`User` model types aligned with the API
   contract; `REVIEWER_MIN_UNIVERSITY_SCORE` policy constant; `UniversityCard` and `UserSummary` in
   `entities/*/ui`). `entities/user` embedding `University`/`UniversityCard` is a same-layer
@@ -566,10 +704,30 @@ Defined by the infrastructure/use-cases work; the frontend consumes it as-is.
   relaxation. Verified the `entities/**` `fsd/insignificant-slice` relaxation is still needed
   (not yet obsolete) by temporarily removing it and observing the errors return; updated its
   comment accordingly. All checks green (`pnpm test` 20 files/125 tests, `pnpm lint`,
-  `pnpm steiger`, `pnpm build`, `pnpm format:check`). Commit pending user consent.
+  `pnpm steiger`, `pnpm build`, `pnpm format:check`). Committed as `8696b4b`. Review of
+  `8696b4b..aa3da40` (covers T5 and T4): RDD medium, 1468 lines, reliability lens approved and
+  acknowledged (lineage `review-6e35c2d3900ad054`); advisories accepted as mandatory follow-ups,
+  moved to T5.1.
+- 2026-09-26: T5.1 implemented and verified (review follow-ups from the `8696b4b..aa3da40`
+  review: `entities/user`'s doc comment no longer claims field-for-field wire-format parity;
+  `UserSummary`'s clipboard copy distinguishes a rejected promise from an unsupported one and
+  clears its live region before each attempt so a repeated outcome re-announces;
+  `RegisterUserForm`'s submit guards its numeric payload field at runtime instead of an `as`
+  cast). Verified together with T6/T7 in one full-suite run (checks recorded under T7); not yet
+  committed — see the Next step note on how the three tasks' changes are separable.
+- 2026-09-26: T6 implemented and verified (`shared/api`'s `ApiError` class and `requestJson`
+  JSON helper — RFC 9457 problem parsing tolerant of an empty/non-JSON body, network failures and
+  missing `VITE_API_URL` all surfacing as `ApiError`; `entities/user`'s `toUser` DTO mapper;
+  `registerUser()`/`inviteReviewer()` in each feature's `api` segment). Verified together with
+  T5.1/T7 (checks recorded under T7); not yet committed.
+- 2026-09-26: T7 implemented and verified (`useRegisterUser`/`useInviteReviewer` stateful
+  composables in `features/*/model`, a shared `ResultAlertEntry` type in `shared/ui`, DI-friendly
+  api parameters). All checks green (`pnpm test` 26 files/157 tests — confirmed stable across 3
+  consecutive full-suite runs after fixing an unrelated per-test-transform perf issue in
+  `registerUser.test.ts`, see its evidence — `pnpm lint`, `pnpm steiger`, `pnpm build`,
+  `pnpm format:check`). Commit pending user consent.
 
 ## Next step
-T4 and T5 are implemented and verified; awaiting user consent to commit (separately — T4 touches
-`features/*`, T5 touches `entities/*`; both touch `steiger.config.ts`, in two separate hunks, one
-per task, see each task's evidence for which). Then T6 (API layer: RFC 9457 `ApiError` parsing,
-`registerUser()`/`inviteReviewer()`), once the user authorizes the next commit/task.
+T8 (pages: `RegisterUserPage`, `InviteReviewerPage` wiring forms, composables and result views;
+`AGENTS.md` web usage notes). T5.1, T6 and T7 are committed as three work-unit commits (barrel
+export lines staged per task).
