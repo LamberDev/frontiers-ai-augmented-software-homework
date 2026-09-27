@@ -79,7 +79,35 @@ describe('Given UserSummary', () => {
     })
   })
 
+  describe('When mounted with a user', () => {
+    it('Then the copy button shows a decorative copy icon next to its label', () => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(UserSummary, { props: { user: user() } })
+
+      // Assert
+      const button = wrapper.find('button.user-summary__copy')
+      const icon = button.find('.mdi-content-copy')
+      expect(icon.exists()).toBe(true)
+      expect(icon.attributes('aria-hidden')).toBe('true')
+      expect(button.text()).toContain('Copy')
+    })
+  })
+
   describe('When the copy button is clicked and the clipboard API succeeds', () => {
+    it('Then the copy icon switches to a check icon', async () => {
+      // Arrange
+      stubClipboard({ writeText: vi.fn().mockResolvedValue(undefined) })
+      const wrapper = mountWithVuetify(UserSummary, { props: { user: user() } })
+
+      // Act
+      await wrapper.find('button.user-summary__copy').trigger('click')
+
+      // Assert
+      await vi.waitFor(() => {
+        expect(wrapper.find('button.user-summary__copy .mdi-check').exists()).toBe(true)
+      })
+    })
+
     it('Then it copies the user id and announces "Copied."', async () => {
       // Arrange
       const writeText = vi.fn().mockResolvedValue(undefined)

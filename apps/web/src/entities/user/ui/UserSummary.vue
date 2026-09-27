@@ -13,7 +13,8 @@
  * the clipboard API being unsupported, and the clipboard call rejecting
  * each get a distinct message; the interaction never throws.
  */
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
+import { VIcon } from 'vuetify/components'
 import GlassCard from '@/shared/ui/molecules/GlassCard/GlassCard.vue'
 import GlassButton from '@/shared/ui/atoms/GlassButton/GlassButton.vue'
 import { UniversityCard } from '@/entities/university/@x/user'
@@ -30,6 +31,12 @@ const announcementByOutcome = {
   unsupported: 'Copying is not supported in this browser.',
   rejected: 'Could not copy the user id.',
 } as const satisfies Record<CopyOutcome, string>
+
+// The button's icon confirms a successful copy visually; the live region
+// stays the source of truth for assistive tech, so the icon is decorative.
+const copyIcon = computed(() =>
+  copyAnnouncement.value === announcementByOutcome.success ? 'mdi-check' : 'mdi-content-copy',
+)
 
 async function copyUserId() {
   copyAnnouncement.value = ''
@@ -69,6 +76,9 @@ async function copyUserId() {
             aria-label="Copy user id"
             @click="copyUserId"
           >
+            <template #prependIcon>
+              <VIcon :icon="copyIcon" aria-hidden="true" />
+            </template>
             Copy
           </GlassButton>
         </dd>
@@ -89,6 +99,7 @@ async function copyUserId() {
 
 .user-summary__row {
   display: flex;
+  align-items: baseline;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
