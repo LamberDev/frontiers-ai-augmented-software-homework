@@ -197,6 +197,24 @@ contract is served at `/openapi/v1.json`.
   not restart a container that becomes unhealthy; `restart: unless-stopped` only covers the
   process exiting.
 
+## Possible improvements
+
+These were deliberately left out: they would make the product nicer, but they fall outside what
+this exercise is meant to evaluate.
+
+- **University autocomplete with an eligibility tag:** while typing the university name, query
+  Frontiers for about 10 suggestions and show each one with a tag saying whether its score meets
+  the threshold the domain requires (`>= 60`), so the user knows up front whether the university
+  qualifies instead of discovering it after registering.
+- **No duplicate invitations:** remember invitations that already succeeded for a user and refuse
+  (or short-circuit) a repeated send, instead of processing the same invitation again.
+- **Invite by name:** replace the raw `userId` input with a searchable select that finds users by
+  name and lets the reviewer pick one. The same searchable-select component would back the
+  university autocomplete above.
+- **Serialize university get-or-create:** guard the get-or-create step with a semaphore (or a
+  per-`frontiersOrganizationId` lock) to remove the duplicate-`University` race described in the
+  first known limitation.
+
 ## AI usage
 
 This project was built with AI assistance under an explicit set of rules (human-authorized
