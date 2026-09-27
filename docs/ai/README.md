@@ -161,6 +161,19 @@ Facts:
   error message includes `probe.error?.message` so spawn failures are no longer
   silent. The AI only ran my version against the five install scenarios
   (repository, `LEFTHOOK=0`, no repository, no git, corrupted config).
+- **CI hardening in `.github/workflows/ci.yml`** (commit `b9f93a1`). After the
+  AI's first version of the workflow was approved, I edited it by hand in three
+  places that go against its original proposal:
+  - `cancel-in-progress` only for `pull_request`, so every push to `main` is
+    verified instead of being cancelled by the next one.
+  - `persist-credentials: false` on every `actions/checkout`, so the job token
+    is not left in `.git/config` for later steps.
+  - `ci-success` now accepts only `success` or `skipped` and fails on any
+    other result, instead of listing the failing states (`failure`,
+    `cancelled`) and letting unknown ones through.
+
+  The AI only committed my change
+  ([transcript](conversations/2026-09-25-ci-workflow.md#human-decision-human-authored-ci-edit)).
 
 ## Evidence index
 
