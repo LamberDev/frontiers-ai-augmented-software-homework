@@ -18,9 +18,24 @@ Together they form the prompt history requested by Frontiers.
    thinking and raw tool output, and replaces emails, home paths and session
    IDs. Personal terms (employer domain, real name, OS username) go one per
    line in `docs/ai/tools/scrub.local.txt`, which git ignores.
-3. Review it against [../SHARING.md](../SHARING.md) and run the leak check
+3. Compact it with [../tools/compact_conversation.py](../tools/compact_conversation.py):
+
+   ```bash
+   python docs/ai/tools/compact_conversation.py docs/ai/conversations/YYYY-MM-DD-<topic>.md
+   ```
+
+   It rewrites the file in place (idempotent, safe to re-run) and drops
+   Gentle AI review/Engram memory bookkeeping, collapses each tool-call block
+   into one counted line, and folds confirmation-only human turns into a
+   one-line marker, while keeping every human prompt and assistant decision.
+   Its tests run with:
+
+   ```bash
+   python -m unittest discover -s docs/ai/tools -p "test_*.py"
+   ```
+4. Review it against [../SHARING.md](../SHARING.md) and run the leak check
    there: the script is a first pass, not a guarantee.
-4. Save it here and add a row to the index.
+5. Save it here and add a row to the index.
 
 ## Naming convention
 

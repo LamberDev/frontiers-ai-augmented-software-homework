@@ -36,3 +36,6 @@ coverage/
 .env.*.local
 pnpm-debug.log*
 .vite/
+
+# Python bytecode from docs/ai/tools
+__pycache__/
