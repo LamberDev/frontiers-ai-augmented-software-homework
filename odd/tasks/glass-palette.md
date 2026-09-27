@@ -165,3 +165,8 @@ No commits/push/PR unless the user asks in the moment (user preference since 202
   test: jsdom cannot render or query the spinner pseudo-elements, so a test would only assert
   markup, not the behavior. Checked that the built CSS contains the scoped rules;
   `pnpm test` 224/224, lint, format:check, build OK.
+- Commits: b5fa81a (palette + contrast), af77360 (toasts + icons), 512f96d (number spinner).
+  Gentle AI review (medium, consent granted, lens review-reliability): approved and
+  acknowledged, authority burned. Advisory, non-blocking follow-ups: ToastStack watch is
+  shallow (only fires on new array references); success toast has no pause on hover/focus;
+  `hexToRgb` does not reject malformed hex.
