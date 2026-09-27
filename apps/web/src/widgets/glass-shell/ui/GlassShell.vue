@@ -5,10 +5,13 @@
  * purely decorative brand-gradient background with blurred accent blobs
  * behind a `header` slot and a centered, responsive content container.
  *
- * The gradient/blob hex values mirror the Frontiers brand tokens documented
- * in `odd/tasks/frontend-ui.md` ("Brand tokens" section) and are only
- * duplicated here, in one place, since they are pure decoration with no
- * equivalent Vuetify theme color.
+ * The gradient/blob hex values mirror the glass palette tokens documented in
+ * `odd/tasks/glass-palette.md` ("Palette" table: gradient-start/middle/end,
+ * primary, accent) and are only duplicated here, in one place, since they are
+ * pure decoration with no equivalent Vuetify theme color. The blob modifier
+ * class names (`--teal`/`--purple`/`--blue`) are historical and kept as-is
+ * (renaming is out of scope for a colors-only change); only the colors they
+ * render changed.
  *
  * This component renders no landmark elements of its own: `header`/`main`
  * land on whatever the caller puts in its slots (e.g. `AppHeader`'s own
@@ -47,7 +50,8 @@
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
-  background: linear-gradient(135deg, #0c4ded 0%, #003bde 55%, #0024b0 100%);
+  /* gradient-start -> gradient-middle -> gradient-end */
+  background: linear-gradient(135deg, #a670db 0%, #7d7de8 55%, #e29ccb 100%);
 }
 
 .glass-shell__blob {
@@ -63,7 +67,7 @@
   left: -8%;
   width: 40vmax;
   height: 40vmax;
-  background: #25bcbd;
+  background: #d161ac; /* accent */
   animation: glass-shell-float 22s ease-in-out infinite;
 }
 
@@ -72,7 +76,7 @@
   bottom: -15%;
   width: 45vmax;
   height: 45vmax;
-  background: #712e74;
+  background: #4d1b7e; /* primary */
   animation: glass-shell-float 26s ease-in-out infinite reverse;
 }
 
@@ -81,7 +85,7 @@
   right: 15%;
   width: 25vmax;
   height: 25vmax;
-  background: #6d9efd;
+  background: #a670db; /* gradient-start */
   animation: glass-shell-float 18s ease-in-out infinite;
 }
 

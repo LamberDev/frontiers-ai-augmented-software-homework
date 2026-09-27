@@ -23,7 +23,7 @@ const ariaLabel = computed(() => (props.subtitle ? `Frontiers — ${props.subtit
       aria-hidden="true"
       focusable="false"
     >
-      <circle cx="16" cy="16" r="15" fill="#0C4DED" />
+      <circle cx="16" cy="16" r="15" fill="#4D1B7E" />
       <path
         d="M10 22V10h11"
         fill="none"
@@ -57,12 +57,12 @@ const ariaLabel = computed(() => (props.subtitle ? `Frontiers — ${props.subtit
 .brand-logo__name {
   font-weight: 700;
   font-size: 1.125rem;
-  color: var(--glass-text, #282828);
+  color: var(--glass-text, #17171c);
 }
 
 .brand-logo__subtitle {
   font-weight: 400;
   font-size: 0.75rem;
-  color: #545454;
+  color: var(--glass-text, #17171c);
 }
 </style>

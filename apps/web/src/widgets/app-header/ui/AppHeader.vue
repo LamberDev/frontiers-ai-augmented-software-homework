@@ -56,18 +56,18 @@ const navItems: readonly NavItem[] = [
 .app-header__link {
   padding: 0.25rem 0.5rem;
   border-radius: 8px;
-  color: var(--glass-text, #282828);
+  color: var(--glass-text, #17171c);
   font-weight: 600;
   text-decoration: none;
 }
 
 .app-header__link:focus-visible {
-  outline: 3px solid #0c4ded;
+  outline: 3px solid #8033cc; /* ring */
   outline-offset: 2px;
 }
 
 .app-header__link.router-link-exact-active {
-  color: #0c4ded;
+  color: #4d1b7e; /* primary */
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 4px;
