@@ -2,7 +2,23 @@
 
 Exported from a Claude Code session and scrubbed per [../SHARING.md](../SHARING.md).
 Model thinking, raw tool output and harness attachments are omitted; tool calls
-are summarised in one line each.
+are summarised as counts, and review and memory bookkeeping is omitted.
+
+## Summary
+
+- **Date:** 2026-09-24
+- **Model:** Claude (Claude Code)
+- **Goal:** Set up a safe-sharing harness under `docs/ai/` to document how AI is used on this homework, before starting the actual exercise.
+- **Outcome:** Created the `docs/ai/` structure (`README.md`, `harness.md`, `SHARING.md`, per-subfolder `README.md`s), added a root `.gitignore` for local harness state, committed (`a8a3a9f`) and merged it to `main` via PR #1, then exported and started cleaning this transcript.
+- **Key decisions:**
+  - Human set a standing rule that nothing is committed without explicit consent.
+  - Human rejected the AI-added `TODO(human)` placeholders and had them removed.
+  - Human decided to ignore `.atl/` and similar local harness state via `.gitignore`.
+  - Human pushed back on hiding tool names in shared AI material; after discussion, scoped the fix to a tone change (present the harness as configured choices, not tool capabilities) instead of the AI's broader proposal to also add a decisions log.
+  - AI generalized the export script (moved personal scrubbing patterns to a git-ignored local file) before saving it to the repo.
+- **Human decisions:**
+  - [No commits without consent](#human-decision-no-commits-without-consent)
+  - [Tone-only scope for tool naming](#human-decision-tone-only-scope)
 
 ## Human
 
@@ -55,25 +71,17 @@ docs/ai/
 
 .
 
-<details><summary>Tool calls</summary>
-
-- `ToolSearch` — select:mcp__engram__mem_context,mcp__engram__mem_save,mcp__engram__mem_session_summary
-- `Bash` — Inspect repo state and gentle-ai version: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && git status --short && ls -la && git branch -a && (gentle-ai --version 2>/dev/null || ech`
-- `engram.mem_context`
-- `Bash` — Read README, list .atl, check review mode: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && cat README.md && find .atl -type f | head -20 && gentle-ai review mode status 2>&1 | hea`
-- `Bash` — Create feature branch and list session transcripts: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && git switch -c chore/agent-harness && ls ~/.claude/projects/<project-dir>/ 2>/dev/null | `
-
-</details>
+_(1 tool calls: 1 Bash)_
 
 ## Assistant
 
 Rama creada. Delego la redacción de la estructura `docs/ai/` a un worker (son varios ficheros de documentación no triviales) con el contexto del harness que ya tengo.
 
-<details><summary>Tool calls</summary>
-
+_(1 tool calls: 1 Agent)_
 - `Agent` — Write docs/ai harness structure
 
-</details>
+<a id="human-decision-no-commits-without-consent"></a>
+> **Human decision:** Set a standing rule that nothing gets committed without explicit consent, overriding any automatic-commit behavior of the workflow.
 
 ## Human
 
@@ -81,13 +89,7 @@ _(sent while the assistant was working)_
 
 no hagas commits sin mi consentimiento
 
-<details><summary>Tool calls</summary>
-
-- `Write` — <home>\.claude\projects\<project-dir>\memory\no-commits-without-consent.md
-- `Bash` — Add memory index entry: `cd "<home>/.claude/projects/<project-dir>/memory" && echo "- [No commits without consent](no-commits-without-consent.md) — always ask before git commit, overrid`
-- `engram.mem_save` — No commits without user consent
-
-</details>
+_(2 tool calls: 1 Bash, 1 Write)_
 
 ## Assistant
 
@@ -113,12 +115,7 @@ _[Background agent finished and reported back]_
 
 Structural readback + spot check the leak grep.
 
-<details><summary>Tool calls</summary>
-
-- `Bash` — Verify files, leaks, and README header: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && git status --short && ls engram-export.json 2>&1; find docs/ai -type f | xargs wc -l; gr`
-- `engram.mem_session_summary`
-
-</details>
+_(1 tool calls: 1 Bash)_
 
 ## Assistant
 
@@ -160,13 +157,7 @@ Está en inglés porque lo leerán en Frontiers. `SHARING.md` lo he añadido yo,
 
 elimina el todo human
 
-<details><summary>Tool calls</summary>
-
-- `Bash` — Show TODO(human) markers with context: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && grep -rn -B3 -A3 "TODO(human)" docs/ai`
-- `Bash` — Remove TODO(human) blocks and verify: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && for f in $(grep -rl "TODO(human)" docs/ai); do perl -0pi -e 's/\n> TODO\(human\):[^\n]*(`
-- `Bash` — Collapse extra blank lines and check file ends: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && for f in $(find docs/ai -name "*.md"); do perl -0pi -e 's/\n{3,}/\n\n/g' "$f"; done; sed`
-
-</details>
+_(3 tool calls: 3 Bash)_
 
 ## Assistant
 
@@ -184,11 +175,7 @@ Siguen pendientes las dos decisiones de antes: si hago el commit y qué hacer co
 
 mete en gitignore .atl y similares
 
-<details><summary>Tool calls</summary>
-
-- `Bash` — Create .gitignore and check status: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && cat > .gitignore <<'EOF'`
-
-</details>
+_(1 tool calls: 1 Bash)_
 
 ## Assistant
 
@@ -256,15 +243,15 @@ Propongo tres cosas:
 
 ¿Quieres que añada `decisions.md` con esas entradas y ajuste el tono de `README.md` y `harness.md`, para que lo que se describa sea tu configuración y no las capacidades de la herramienta?
 
+<a id="human-decision-tone-only-scope"></a>
+> **Human decision:** Rejected the AI's broader proposal (a separate `decisions.md` log) and scoped the fix to only a tone change in `README.md` and `harness.md`.
+
 ## Human
 
 solo ajusta el tono en readme y harness
 
-<details><summary>Tool calls</summary>
-
+_(1 tool calls: 1 Agent)_
 - `Agent` — Adjust tone of README and harness
-
-</details>
 
 ## Assistant
 
@@ -276,11 +263,7 @@ Cuando termine revisaré el resultado y te lo enseñaré.
 
 _[Background agent finished and reported back]_
 
-<details><summary>Tool calls</summary>
-
-- `Bash` — Spot-check README tone and status: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && git status --short && grep -rn "TODO" docs/ai; sed -n 1,60p docs/ai/README.md`
-
-</details>
+_(1 tool calls: 1 Bash)_
 
 ## Assistant
 
@@ -317,14 +300,7 @@ Queda pendiente:
 
 comitea si
 
-<details><summary>Tool calls</summary>
-
-- `Bash` — Commit harness docs and gitignore: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && git add .gitignore docs/ai && git commit -q -F - <<'EOF'`
-- `engram.mem_save` — Harness docs committed on chore/agent-harness
-- `ToolSearch` — select:mcp__engram__mem_judge
-- `engram.mem_judge` — rel-6a7adc30952b1edd
-
-</details>
+_(1 tool calls: 1 Bash)_
 
 ## Assistant
 
@@ -341,28 +317,9 @@ Quedan tres cosas que dependen de ti:
 
 _[Stop hook: RDD asked to run the review preflight for the new commit]_
 
-<details><summary>Tool calls</summary>
 
-- `Bash` — Run provider-issued review START: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && gentle-ai review start '--cwd=<home>\source\personal\frontiers-ai-augmented-software-hom`
+_[Gentle AI review consent: Skip this time]_
 
-</details>
-
-## Human (answer to blocking question)
-
-> Gentle AI puede revisar este cambio antes de que lo des por terminado. Motivo: la revisión puede ayudar a detectar regresiones en estos cambios. Beneficio: revisar tarda un poco más y deja el resultado más seguro. Evidencia de riesgo (nivel medium, 8 ficheros, 468 líneas): «este cambio no es solo documentación pasiva, así que recibe una revisión consolidada» y «un cambio ejecutable en .gitignore». Nota: para desactivar las revisiones de forma permanente, ejecuta 'gentle-ai review mode disable'. ¿Qué quieres hacer?
-
-Options:
-
-- **Review this change**: Consecuencia: revisa solo este cambio; los siguientes cambios de riesgo medio o alto volverán a preguntar, y la entrega necesita una aprobación aparte.
-- **Skip this time**: Consecuencia: omite solo este cambio; no se crea registro de revisión y las revisiones futuras siguen activadas.
-
-**Answer:** Skip this time
-
-<details><summary>Tool calls</summary>
-
-- `Bash` — Run the declined consent invocation: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && gentle-ai review start --contract gentle-ai.review-integration/v2 --cwd '<home>\source\p`
-
-</details>
 
 ## Assistant
 
@@ -380,17 +337,7 @@ La rama `chore/agent-harness` está limpia y sin push. Siguen pendientes las mis
 
 haz push de la rama y mergea el pr
 
-<details><summary>Tool calls</summary>
-
-- `Bash` — Push branch to origin: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && git remote -v && git push -u origin chore/agent-harness 2>&1 | tail -5`
-- `Bash` — Create pull request: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && gh pr create --base main --head chore/agent-harness --title "chore(ai): add agent harnes`
-- `Bash` — Merge PR and sync local main: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && gh pr merge 1 --merge 2>&1 | tail -5; gh pr view 1 --json state,mergeCommit -q '.state+"`
-- `engram.mem_save` — PR #1 agent harness merged into main
-- `engram.mem_session_summary`
-- `engram.mem_judge` — rel-8876b13c57f757c5
-- `engram.mem_judge` — rel-3ffa585309af89c6
-
-</details>
+_(3 tool calls: 3 Bash)_
 
 ## Assistant
 
@@ -416,17 +363,7 @@ exporta la conversacion y la reviso
 
 Exporto la transcripción de esta sesión a Markdown, la limpio según `SHARING.md` y la dejo sin commit para que la revises.
 
-<details><summary>Tool calls</summary>
-
-- `Bash` — Create branch and inspect transcript structure: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && (python --version || python3 --version) 2>&1; git switch -c docs/ai-conversation-export `
-- `Bash` — Inspect user messages and attachments: `f=~/.claude/projects/<project-dir>/<session-id>.jsonl; python -c "`
-- `Write` — <home>\AppData\Local\Temp\claude\<project-dir>\<session-id>\scratchpad\export_conversation.py
-- `Bash` — Run export, leak-check and preview: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && S="<home>/AppData/Local/Temp/claude/<project-dir>/<session-id>/scratchpad/export_convers`
-- `Bash` — Check answer block, scrub markers, update index: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && O=docs/ai/conversations/2026-09-24-agent-harness.md; grep -n -A12 "answer to blocking" $`
-- `Edit` — <home>\AppData\Local\Temp\claude\<project-dir>\<session-id>\scratchpad\export_conversation.py
-- `Bash` — Re-run export and leak check: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && S="<home>/AppData/Local/Temp/claude/<project-dir>/<session-id>/scratchpad/export_convers`
-
-</details>
+_(7 tool calls: 5 Bash, 1 Edit, 1 Write)_
 
 ## Assistant
 
@@ -465,9 +402,4 @@ guarda el script en el repo si
 
 El script tiene tu dominio y tu usuario escritos literalmente en los patrones de limpieza. Antes de guardarlo en el repo lo generalizo: los datos personales pasan a un fichero local ignorado por git, como indica `SHARING.md`.
 
-<details><summary>Tool calls</summary>
-
-- `Write` — <home>\source\personal\frontiers-ai-augmented-software-homework\docs\ai\tools\export_conversation.py
-- `Bash` — Create local scrub list, re-export, verify no leaks: `cd "<home>/source/personal/frontiers-ai-augmented-software-homework" && printf '# Local-only scrub terms (never commit)\n<redacted>\n<redacted>\n<redacted>\n' >`
-
-</details>
+_(2 tool calls: 1 Bash, 1 Write)_
