@@ -208,6 +208,9 @@ this exercise is meant to evaluate.
   qualifies instead of discovering it after registering.
 - **No duplicate invitations:** remember invitations that already succeeded for a user and refuse
   (or short-circuit) a repeated send, instead of processing the same invitation again.
+- **No duplicate users:** registering the same user twice currently creates two users with
+  different ids; detect an existing user (for example by name and university) and return it, or
+  reject the request with a conflict, instead of creating a duplicate.
 - **Invite by name:** replace the raw `userId` input with a searchable select that finds users by
   name and lets the reviewer pick one. The same searchable-select component would back the
   university autocomplete above.
