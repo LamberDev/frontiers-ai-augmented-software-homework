@@ -867,10 +867,21 @@ but no UI kit, theme or real components.
     `review-b181b5457b9834d0`); its WARNING (empty `VITE_API_URL` build arg produced a broken but
     healthy image) fixed inline: the Dockerfile fails the build when the argument is empty.
     Verified: `docker build` without the argument exits 1 with the message, with it exits 0.
-- [ ] T9.1 Add the `web` service to `docker-compose.yml` once `feat/use-cases` (which owns that
-  file) is on `main`: `build: ./apps/web` with `VITE_API_URL=http://localhost:8080` (the
-  compose-network API origin), publish `127.0.0.1:5173:8080` so it matches the API's CORS-allowed
+- [x] T9.1 Add the `web` service to `docker-compose.yml` once `feat/use-cases` (which owns that
+  file) is on `main`: `build: ./apps/web` with `VITE_API_URL=http://localhost:8080` (the API's
+  host-published port: the browser calls it from the host, not through the compose network), publish `127.0.0.1:5173:8080` so it matches the API's CORS-allowed
   origin `http://localhost:5173`, `depends_on: api` with `condition: service_healthy`.
+  Route: inline (one mechanical file plus docs). Branch `feat/frontend-ui-compose` (off
+  `feat/frontend-ui-integration` after main was merged into it), PR to `main` after #21.
+  - Evidence: `docker compose config -q` valid; `docker compose up --build -d` → api healthy, web
+    running and healthy after api (the web health comes from the `HEALTHCHECK` in
+    `apps/web/Dockerfile`); `GET http://localhost:5173/` and `/invite` → 200; the bundle
+    embeds `http://localhost:8080`; CORS preflight from `http://localhost:5173` returns
+    `Access-Control-Allow-Origin: http://localhost:5173`; `POST /api/reviewers/invitations`
+    with an unknown id → 404 problem `Reviewer.UserNotFound`. Stack stopped and local images
+    removed afterwards. README quick start updated. Review of `2233b36..48c991a` (RDD high, 4
+    lenses): approved and acknowledged (lineage `review-0f3be2c9790858c9`); the task-wording
+    WARNING and the healthcheck-provenance SUGGESTION fixed in the follow-up commit.
 
 ## API contract (from `feat/use-cases`, explored 2026-09-26)
 Defined by the infrastructure/use-cases work; the frontend consumes it as-is.

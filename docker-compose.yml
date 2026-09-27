@@ -1,5 +1,4 @@
-# Runs the application locally in containers. The `web` service is added by the
-# `frontend-ui` feature.
+# Runs the application locally in containers: the API and the web frontend.
 services:
   api:
     build:
@@ -30,3 +29,20 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        # Baked into the bundle at build time: the browser calls the API on the
+        # host through its published port, not through the compose network.
+        VITE_API_URL: http://localhost:8080
+    ports:
+      # Port 5173 on the host keeps the origin allowed by the API's CORS policy.
+      - "127.0.0.1:5173:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    # Health status comes from the HEALTHCHECK in apps/web/Dockerfile.
+    restart: unless-stopped

@@ -62,7 +62,7 @@ are too slow for the hook.
 
 ## Quick start (Docker)
 
-Run the API in a container:
+Run the API and the web frontend in containers:
 
 ```bash
 docker compose up --build
@@ -89,8 +89,10 @@ curl -X POST http://localhost:8080/api/reviewers/invitations \
   -d '{"userId":"<userId>"}'
 ```
 
-`docker compose down` stops and removes the container. The `web` service is added by the
-`frontend-ui` feature and is not part of this compose file yet.
+The web frontend starts once the API is healthy and is served on `http://localhost:5173`
+(published on `127.0.0.1` only), calling the API at `http://localhost:8080`.
+
+`docker compose down` stops and removes the containers.
 
 ## Run locally without Docker
 
