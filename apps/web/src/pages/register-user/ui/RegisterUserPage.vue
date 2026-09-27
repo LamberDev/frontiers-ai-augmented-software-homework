@@ -1,15 +1,16 @@
 <script setup lang="ts">
 /**
  * Register-user page: composes `RegisterUserForm` with `useRegisterUser`
- * (see `odd/tasks/frontend-ui.md`, T7/T8), renders one `ResultAlert` per
- * result (the shared results-list pattern — see `apps/web/AGENTS.md`), and
- * after a successful registration shows the registered user's `UserSummary`
- * with an "Invite as reviewer" link into the invite-reviewer page,
- * prefilled via its `userId` query param.
+ * (see `odd/tasks/frontend-ui.md`, T7/T8), renders `results` as top-right
+ * toasts via `ToastStack` (the shared results-list pattern — see
+ * `apps/web/AGENTS.md` and `odd/tasks/glass-palette.md`, T3), and after a
+ * successful registration shows the registered user's `UserSummary` with an
+ * "Invite as reviewer" link into the invite-reviewer page, prefilled via its
+ * `userId` query param.
  */
 import { RegisterUserForm, useRegisterUser } from '@/features/register-user'
 import { UserSummary } from '@/entities/user'
-import { GlassButton, ResultAlert } from '@/shared/ui'
+import { GlassButton, ToastStack } from '@/shared/ui'
 
 const { status, fieldErrors, results, lastUser, submit, dismiss } = useRegisterUser()
 </script>
@@ -23,16 +24,7 @@ const { status, fieldErrors, results, lastUser, submit, dismiss } = useRegisterU
       @submit="submit"
     />
     <section aria-label="Results" class="register-user-page__results">
-      <ResultAlert
-        v-for="entry in results"
-        :key="entry.id"
-        :type="entry.type"
-        :title="entry.title"
-        :message="entry.message"
-        :items="entry.items"
-        closable
-        @close="dismiss(entry.id)"
-      />
+      <ToastStack :items="results" @close="dismiss" />
     </section>
     <UserSummary v-if="lastUser" :user="lastUser">
       <template #actions>
@@ -49,9 +41,5 @@ const { status, fieldErrors, results, lastUser, submit, dismiss } = useRegisterU
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-}
-
-.register-user-page__results:empty {
-  display: none;
 }
 </style>

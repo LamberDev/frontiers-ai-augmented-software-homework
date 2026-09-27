@@ -6,6 +6,14 @@
  * `role="alert"`/`aria-live="assertive"` for error/warning, so assistive
  * tech announces failures more urgently than confirmations.
  *
+ * Renders as a solid, opaque toast (via Vuetify's `variant="flat"` +
+ * `type`-driven theme color, e.g. `bg-success`/`bg-warning`/`bg-error` —
+ * see `frontiersTheme.ts`'s toast semantic colors), never the translucent
+ * `.glass-surface` used elsewhere in `shared/ui`: a toast's background must
+ * stay legible regardless of whatever page content sits behind it (see
+ * `odd/tasks/glass-palette.md`, T3). Rendered inside `ToastStack`, which
+ * owns placement (fixed, top-right) and auto-dismiss timing.
+ *
  * Visibility contract (redesigned in T2.3, superseding T2.1 item 1 — see
  * `odd/tasks/frontend-ui.md`): this component is stateless with respect to
  * visibility. It is visible for exactly as long as it is mounted, and it
@@ -45,6 +53,16 @@ const announcementByType = {
   error: { role: 'alert', ariaLive: 'assertive' },
 } as const satisfies Record<typeof props.type, { role: string; ariaLive: string }>
 
+// Vuetify's default `error` icon is `mdi-close-circle` (an "x" in a circle), which reads
+// as a second close button next to the real one. Every type gets an unambiguous glyph.
+const iconByType = {
+  success: 'mdi-check-circle',
+  info: 'mdi-information',
+  warning: 'mdi-alert',
+  error: 'mdi-alert-octagon',
+} as const satisfies Record<typeof props.type, string>
+
+const icon = computed(() => iconByType[props.type])
 const role = computed(() => announcementByType[props.type].role)
 const ariaLive = computed(() => announcementByType[props.type].ariaLive)
 
@@ -72,11 +90,13 @@ function handleClose() {
     :type="type"
     :title="title"
     :text="message"
+    :icon="icon"
     :closable="closable"
+    close-label="Dismiss notification"
     :role="role"
     :aria-live="ariaLive"
     variant="flat"
-    class="result-alert glass-surface"
+    class="result-alert"
     @click:close="handleClose"
   >
     <ul v-if="items.length" class="result-alert__items">

@@ -45,6 +45,52 @@ const ResultAlertList = defineComponent({
 })
 
 describe('Given ResultAlert', () => {
+  describe('Given the type icon must never look like the close button', () => {
+    it.each([
+      ['success', 'mdi-check-circle'],
+      ['info', 'mdi-information'],
+      ['warning', 'mdi-alert'],
+      ['error', 'mdi-alert-octagon'],
+    ] as const)('Then a %s alert shows the %s icon, not an "x" glyph', (type, expectedIcon) => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(ResultAlert, {
+        props: { type, title: 'Result', closable: true },
+      })
+
+      // Assert
+      const typeIcon = wrapper.find('.v-alert__prepend .v-icon')
+      expect(typeIcon.classes()).toContain(expectedIcon)
+      expect(typeIcon.classes().join(' ')).not.toMatch(/mdi-close/)
+    })
+
+    it('Then the close button has an explicit accessible label', () => {
+      // Arrange / Act
+      const wrapper = mountWithVuetify(ResultAlert, {
+        props: { type: 'error', title: 'Something failed', closable: true },
+      })
+
+      // Assert
+      expect(wrapper.find('.v-alert__close button').attributes('aria-label')).toBe(
+        'Dismiss notification',
+      )
+    })
+  })
+
+  describe('Given the toast requirement that alerts use solid, opaque backgrounds', () => {
+    describe('When mounted with any type', () => {
+      it('Then it does not use the translucent .glass-surface background', () => {
+        // Arrange / Act
+        const wrapper = mountWithVuetify(ResultAlert, {
+          props: { type: 'success', title: 'Registration complete' },
+        })
+
+        // Assert
+        expect(wrapper.classes()).toContain('result-alert')
+        expect(wrapper.classes()).not.toContain('glass-surface')
+      })
+    })
+  })
+
   describe('When type is "success"', () => {
     it('Then it has role="status" and an aria-live of "polite"', () => {
       // Arrange / Act
