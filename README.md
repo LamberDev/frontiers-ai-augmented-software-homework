@@ -14,6 +14,9 @@ explicit, verifiable architecture.
 
 ## Prerequisites
 
+For the Docker quick start you only need Docker with Compose v2 (`docker compose`); the toolchain
+below is required only to run or develop the apps without Docker.
+
 - .NET SDK 10 (pinned in `apps/api/global.json`)
 - Node 24 LTS (pinned in `apps/web/.nvmrc`)
 - pnpm 9 (pinned in the `packageManager` field of `package.json`)
@@ -62,7 +65,8 @@ are too slow for the hook.
 
 ## Quick start (Docker)
 
-Run the API and the web frontend in containers:
+Run the API and the web frontend in containers, from the repository root (where
+`docker-compose.yml` lives):
 
 ```bash
 docker compose up --build
@@ -196,6 +200,27 @@ contract is served at `/openapi/v1.json`.
 - **No automatic restart on unhealthy:** `docker-compose.yml` reports container health but does
   not restart a container that becomes unhealthy; `restart: unless-stopped` only covers the
   process exiting.
+
+## Possible improvements
+
+These were deliberately left out: they would make the product nicer, but they fall outside what
+this exercise is meant to evaluate.
+
+- **University autocomplete with an eligibility tag:** while typing the university name, query
+  Frontiers for about 10 suggestions and show each one with a tag saying whether its score meets
+  the threshold the domain requires (`>= 60`), so the user knows up front whether the university
+  qualifies instead of discovering it after registering.
+- **No duplicate invitations:** remember invitations that already succeeded for a user and refuse
+  (or short-circuit) a repeated send, instead of processing the same invitation again.
+- **No duplicate users:** registering the same user twice currently creates two users with
+  different ids; detect an existing user (for example by name and university) and return it, or
+  reject the request with a conflict, instead of creating a duplicate.
+- **Invite by name:** replace the raw `userId` input with a searchable select that finds users by
+  name and lets the reviewer pick one. The same searchable-select component would back the
+  university autocomplete above.
+- **Serialize university get-or-create:** guard the get-or-create step with a semaphore (or a
+  per-`frontiersOrganizationId` lock) to remove the duplicate-`University` race described in the
+  first known limitation.
 
 ## AI usage
 
