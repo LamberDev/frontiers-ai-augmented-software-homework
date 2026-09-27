@@ -14,6 +14,9 @@ explicit, verifiable architecture.
 
 ## Prerequisites
 
+For the Docker quick start you only need Docker with Compose v2 (`docker compose`); the toolchain
+below is required only to run or develop the apps without Docker.
+
 - .NET SDK 10 (pinned in `apps/api/global.json`)
 - Node 24 LTS (pinned in `apps/web/.nvmrc`)
 - pnpm 9 (pinned in the `packageManager` field of `package.json`)
@@ -62,7 +65,8 @@ are too slow for the hook.
 
 ## Quick start (Docker)
 
-Run the API and the web frontend in containers:
+Run the API and the web frontend in containers, from the repository root (where
+`docker-compose.yml` lives):
 
 ```bash
 docker compose up --build
