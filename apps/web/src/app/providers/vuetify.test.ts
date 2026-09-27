@@ -54,10 +54,11 @@ describe('Given the app Vuetify plugin', () => {
       expect(root?.classList.contains('v-theme--frontiers')).toBe(true)
 
       // Assert: Vuetify writes the resolved theme colors into a generated
-      // stylesheet (`#vuetify-theme-stylesheet`) as rgb CSS variables; brand
-      // primary #0C4DED must resolve to the "12,77,237" rgb triplet there.
+      // stylesheet (`#vuetify-theme-stylesheet`) as rgb CSS variables; glass
+      // palette primary #4D1B7E must resolve to the "77,27,126" rgb triplet
+      // there.
       const themeStylesheet = document.getElementById('vuetify-theme-stylesheet')
-      expect(themeStylesheet?.textContent).toContain('--v-theme-primary: 12,77,237')
+      expect(themeStylesheet?.textContent).toContain('--v-theme-primary: 77,27,126')
 
       app.unmount()
     })

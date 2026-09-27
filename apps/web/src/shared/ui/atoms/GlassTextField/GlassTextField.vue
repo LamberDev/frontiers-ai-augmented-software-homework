@@ -90,3 +90,17 @@ const fieldValue = computed<string | number>({
     density="comfortable"
   />
 </template>
+
+<style scoped>
+/* Hide the native number spinner: values are typed, and the tiny arrows are hard to hit. */
+.glass-text-field :deep(input[type='number']) {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.glass-text-field :deep(input[type='number']::-webkit-inner-spin-button),
+.glass-text-field :deep(input[type='number']::-webkit-outer-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+</style>

@@ -4,27 +4,39 @@
  * `shared/config/theme/frontiersTheme.ts` (single source of truth for the
  * raw numbers); this file turns them into CSS custom properties and one
  * reusable `.glass-surface` class so every glass component looks the same
- * without features styling Vuetify directly (see `odd/tasks/frontend-ui.md`,
- * "Brand tokens" / glass section).
+ * without features styling Vuetify directly (see `odd/tasks/glass-palette.md`,
+ * "Palette" table).
  *
  * Contrast approach (documented, not just implemented): every `.glass-surface`
- * renders dark text (`#282828`, the Frontiers `on-surface` neutral) on a
- * light, white-tinted translucent background. The fallbacks below always
- * resolve to an *opaque* white background, so text contrast never depends on
- * unknown content behind the surface and stays >= 4.5:1 (WCAG AA) in every
- * mode. Components that sit on a solid brand-blue background instead (e.g.
+ * renders dark text (`#17171C`, the glass-palette `on-surface`/foreground
+ * neutral) on a light, white-tinted translucent background. The fallbacks
+ * below always resolve to an *opaque* white background, so text contrast
+ * never depends on unknown content behind the surface and stays >= 4.5:1
+ * (WCAG AA) in every mode (see `shared/config/theme/contrast.test.ts`).
+ * Components that sit on a solid primary (violet) background instead (e.g.
  * `GlassButton`'s primary variant) rely on Vuetify's theme-driven white
  * "on-primary" text, not this file.
  */
 :root {
   --glass-blur: 16px;
-  --glass-surface-bg: rgba(255, 255, 255, 0.14);
+  --glass-surface-bg: rgba(255, 255, 255, 0.12);
   --glass-surface-bg-opaque: #ffffff;
-  --glass-border-color: rgba(255, 255, 255, 0.25);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+  --glass-border-color: rgba(255, 255, 255, 0.35);
+  --glass-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  --glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.25);
   --glass-radius: 16px;
-  --glass-text: #282828;
+  --glass-text: #17171c;
   --glass-transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+
+  /* Toast semantic colors (mirrors `frontiersTheme.ts`'s `success`/`warning`/`error`/
+     `on-*` theme colors — that TS file is the single source of truth for the raw hex;
+     these custom properties exist for any non-Vuetify-themed consumer that needs the
+     same solid, opaque toast colors). See `shared/ui/molecules/ToastStack` and
+     `odd/tasks/glass-palette.md` (T3). */
+  --toast-success-bg: #15803d;
+  --toast-warning-bg: #b45309;
+  --toast-error-bg: #b91c1c;
+  --toast-text: #ffffff;
 }
 
 .glass-surface {
@@ -33,7 +45,7 @@
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border-color);
   border-radius: var(--glass-radius);
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--glass-shadow), var(--glass-inset);
   color: var(--glass-text);
   transition: var(--glass-transition);
 }

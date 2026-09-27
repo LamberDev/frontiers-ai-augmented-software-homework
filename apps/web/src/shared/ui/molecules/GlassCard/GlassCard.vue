@@ -102,7 +102,7 @@ const elevationClass = computed(() =>
 
 .glass-card__subtitle {
   margin: 0.25rem 0 0;
-  color: #545454;
+  color: var(--glass-text, #17171c);
 }
 
 .glass-card__actions {
