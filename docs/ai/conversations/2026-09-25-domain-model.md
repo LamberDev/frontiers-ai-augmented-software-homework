@@ -4,6 +4,21 @@ Exported from a Claude Code session and scrubbed per [../SHARING.md](../SHARING.
 Model thinking, raw tool output and harness attachments are omitted; tool calls
 are summarised as counts, and review and memory bookkeeping is omitted.
 
+## Summary
+
+- **Date:** 2026-09-25
+- **Model:** Claude (Claude Code)
+- **Goal:** Implement the domain model (shared kernel, `User`/`University` entities, reviewer eligibility policy, EF Core InMemory persistence) following the refined, two-phase prompt from the prior prompt-review session.
+- **Outcome:** A delegated writer completed T1–T6 as six commits plus a docs commit on `feat/domain-model` (branched from `main`), with all local verification green (build, tests, dependency rules, TDD RED/GREEN evidence per task). The RDD review could not complete due to a tool timeout; the human declined review for this candidate after an occurrence was filed on an existing upstream issue. The human then pushed the branch directly, judging the size acceptable since most of it is boilerplate.
+- **Key decisions:**
+  - Human answered the implementing agent's 12 open Phase-1 questions, settling several product decisions: `FrontiersOrganizationId` as `long` (`> 0`), `Score` as `decimal?` with no upper bound but a negative-value error, ineligibility as a successful result (not an `Error`) carrying every failing reason, and length limits for user/university names.
+  - AI reported the RDD review as unable to complete (`operation_timeout`), filed one occurrence comment on the existing upstream `gentle-ai#4655` issue with consent, and declined review for this candidate.
+  - AI flagged a design discrepancy for the human to resolve rather than fixing it unilaterally: `HasPrecision(5,2)` on the `Score` column contradicts the "no upper limit" decision.
+  - Human decided to keep the ~1435-line change as a single push without splitting it into smaller PRs, since most of the diff is boilerplate.
+- **Human decisions:**
+  - [Settling the domain's open product questions](#human-decision-domain-answers)
+  - [Single push despite size, since most of it is boilerplate](#human-decision-single-push-boilerplate)
+
 ## Human
 
 ```text
@@ -372,6 +387,9 @@ Notas de diseño:
 
 Paro aquí y espero tu respuesta antes de escribir código.
 
+<a id="human-decision-domain-answers"></a>
+> **Human decision:** Answered all 12 open Phase-1 questions, settling product decisions such as `FrontiersOrganizationId` as `long` (`> 0`), `Score` as `decimal?` with no upper bound, and treating ineligibility as a successful result rather than an error.
+
 ## Human
 
 ```text
@@ -579,6 +597,9 @@ El `grep` lo filtré a `*.cs` para no recorrer `bin/obj`.
 6. **Índice único en InMemory:** el índice sobre `FrontiersOrganizationId` está declarado, pero InMemory no lo aplica. La garantía de no duplicar llegará con el get-or-create del handler.
 
 **Siguiente paso:** el push y la PR los decides tú (son unas 1435 líneas, así que conviene hablar de dividirla en varias PR). Luego viene el caso de uso `RegisterUser`.
+
+<a id="human-decision-single-push-boilerplate"></a>
+> **Human decision:** Pushed the ~1435-line change as a single unit without splitting it into smaller PRs, judging the size acceptable since most of it is boilerplate.
 
 ## Human
 

@@ -4,6 +4,20 @@ Exported from a Claude Code session and scrubbed per [../SHARING.md](../SHARING.
 Model thinking, raw tool output and harness attachments are omitted; tool calls
 are summarised as counts, and review and memory bookkeeping is omitted.
 
+## Summary
+
+- **Date:** 2026-09-25
+- **Model:** Claude (Claude Code)
+- **Goal:** Build `.github/workflows/ci.yml` (path-filtered `api`/`web` jobs plus a required `ci-success` gate) that verifies everything the pre-commit hook checks, and close the pending CI task from the git-hooks-linting session.
+- **Outcome:** The workflow, `global.json`, `.nvmrc` and `package.json` updates, and README/task-doc updates were committed on `chore/ci-workflow` (`cbe987c`), passed `actionlint` and all local job commands, and went through a 4-lens RDD review with no blockers. The human then hand-edited `ci.yml` directly (credentials hardening, `cancel-in-progress` scope) as a separate, human-authored commit (`b9f93a1`), and the AI aligned the docs to match.
+- **Key decisions:**
+  - AI chose `dorny/paths-filter` over `on.paths` so a required `ci-success` check is never skipped entirely, and used `actions/cache` instead of `setup-dotnet`'s built-in cache since the repo has no `packages.lock.json`.
+  - Human made direct manual edits to `ci.yml` (hardening checkout credentials, restricting `cancel-in-progress` to PRs only) that diverged from the AI's original proposal, and asked the AI to attribute that commit to the human alone.
+  - Human chose to skip RDD review on that human-authored commit.
+  - AI corrected its own earlier mistaken claim about the state of `cancel-in-progress` after re-reading the file, rather than leaving the discrepancy undocumented.
+- **Human decisions:**
+  - [Human-authored workflow edit, attributed to the human](#human-decision-human-authored-ci-edit)
+
 ## Human
 
 ```text
@@ -222,6 +236,9 @@ El mensaje lleva además la línea `Co-Authored-By` de atribución.
 
 ## Revisión (4 lentes)
 Salió aprobada, sin bloqueantes.
+
+<a id="human-decision-human-authored-ci-edit"></a>
+> **Human decision:** Made direct hand edits to `ci.yml` that diverged from the AI's original proposal, and asked for the resulting commit to be attributed to the human, not the AI.
 
 ## Human
 

@@ -46,16 +46,59 @@ Together they form the prompt history requested by Frontiers.
 ```markdown
 # <Topic>
 
+Exported from a Claude Code session and scrubbed per [../SHARING.md](../SHARING.md).
+...
+
+## Summary
+
 - **Date:** YYYY-MM-DD
 - **Model:** <model used>
 - **Goal:** <one sentence>
+- **Outcome:** <what was built or decided, with PRs/commits if named>
+- **Key decisions:** 3-5 bullets, each naming who drove it (human or AI) when clear.
+- **Human decisions:** links to the `human-decision-*` anchors below, e.g.
+  `[Domain vs contract](#human-decision-domain-vs-contract)`.
 
-## Prompt 1
+## Human
 <user prompt>
 
-## Answer 1 (summary)
+## Assistant
 <what the AI did and decided>
 ```
+
+A moment where the human corrected, redirected, constrained or challenged the
+AI gets an anchor and a one-line callout immediately before its `## Human`
+heading, without editing the prompt text itself:
+
+```markdown
+<a id="human-decision-<slug>"></a>
+> **Human decision:** <short description of what was decided and why it mattered>
+
+## Human
+...
+```
+
+## Timeline
+
+Each session builds on the ones before it:
+
+1. **Agent harness** — sets up the `docs/ai/` structure and sharing rules
+   used by every later session.
+2. **Monorepo architecture** — scaffolds `apps/api` (.NET 10 Clean/Screaming
+   Architecture) and `apps/web` (Vue 3 FSD) inside that harness.
+3. **Git hooks and linting** — adds pre-commit checks on top of the scaffold
+   and fixes the review findings one commit per finding.
+4. **CI workflow** — promotes what the pre-commit hook checks locally into a
+   required GitHub Actions gate, closing a task left open in the hooks
+   session.
+5. **Domain model prompt review** — reviews and rewrites the prompt for the
+   next step (the domain model) before handing it to the implementing agent.
+6. **Domain model** — implements that reviewed prompt: shared kernel,
+   `User`/`University` entities and EF Core InMemory persistence.
+7. **Use cases** — builds the use cases and HTTP endpoints on top of that
+   domain model, and ships the backend.
+8. **Frontend UI** — builds the Vue 3 UI in parallel, then integrates it
+   against the HTTP contract the use-cases session produced.
 
 ## Index
 
@@ -66,4 +109,3 @@ Together they form the prompt history requested by Frontiers.
 | `2026-09-25-git-hooks-linting.md` | 2026-09-25 | Lefthook pre-commit, ESLint/Prettier and `dotnet format`, review fixes | Reviewed |
 | `2026-09-25-ci-workflow.md` | 2026-09-25 | GitHub Actions CI for api and web, `ci-success` gate, review follow-ups | Reviewed |
 | `2026-09-25-domain-model.md` | 2026-09-25 | Domain model: shared kernel, User/University, reviewer eligibility, EF Core InMemory persistence | Reviewed |
-

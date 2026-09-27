@@ -4,6 +4,22 @@ Exported from a Claude Code session and scrubbed per [../SHARING.md](../SHARING.
 Model thinking, raw tool output and harness attachments are omitted; tool calls
 are summarised as counts, and review and memory bookkeeping is omitted.
 
+## Summary
+
+- **Date:** 2026-09-24
+- **Model:** Claude (Claude Code)
+- **Goal:** Set up a safe-sharing harness under `docs/ai/` to document how AI is used on this homework, before starting the actual exercise.
+- **Outcome:** Created the `docs/ai/` structure (`README.md`, `harness.md`, `SHARING.md`, per-subfolder `README.md`s), added a root `.gitignore` for local harness state, committed (`a8a3a9f`) and merged it to `main` via PR #1, then exported and started cleaning this transcript.
+- **Key decisions:**
+  - Human set a standing rule that nothing is committed without explicit consent.
+  - Human rejected the AI-added `TODO(human)` placeholders and had them removed.
+  - Human decided to ignore `.atl/` and similar local harness state via `.gitignore`.
+  - Human pushed back on hiding tool names in shared AI material; after discussion, scoped the fix to a tone change (present the harness as configured choices, not tool capabilities) instead of the AI's broader proposal to also add a decisions log.
+  - AI generalized the export script (moved personal scrubbing patterns to a git-ignored local file) before saving it to the repo.
+- **Human decisions:**
+  - [No commits without consent](#human-decision-no-commits-without-consent)
+  - [Tone-only scope for tool naming](#human-decision-tone-only-scope)
+
 ## Human
 
 En este repositorio vamos a realizar un ejercicio para la empresa forntiers cuya descripcion es la siguiente. 
@@ -63,6 +79,9 @@ Rama creada. Delego la redacción de la estructura `docs/ai/` a un worker (son v
 
 _(1 tool calls: 1 Agent)_
 - `Agent` — Write docs/ai harness structure
+
+<a id="human-decision-no-commits-without-consent"></a>
+> **Human decision:** Set a standing rule that nothing gets committed without explicit consent, overriding any automatic-commit behavior of the workflow.
 
 ## Human
 
@@ -223,6 +242,9 @@ Propongo tres cosas:
 3. **Rellenar tú las secciones de "Why this model" y "When I coded without AI".** Son las que Frontiers pide explícitamente, y tienen que sonar a ti, no a la IA. Por eso no las redacto yo.
 
 ¿Quieres que añada `decisions.md` con esas entradas y ajuste el tono de `README.md` y `harness.md`, para que lo que se describa sea tu configuración y no las capacidades de la herramienta?
+
+<a id="human-decision-tone-only-scope"></a>
+> **Human decision:** Rejected the AI's broader proposal (a separate `decisions.md` log) and scoped the fix to only a tone change in `README.md` and `harness.md`.
 
 ## Human
 

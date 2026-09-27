@@ -4,6 +4,21 @@ Exported from a Claude Code session and scrubbed per [../SHARING.md](../SHARING.
 Model thinking, raw tool output and harness attachments are omitted; tool calls
 are summarised as counts, and review and memory bookkeeping is omitted.
 
+## Summary
+
+- **Date:** 2026-09-24
+- **Model:** Claude (Claude Code)
+- **Goal:** Scaffold the monorepo (`apps/api` in .NET 10 Clean/Screaming Architecture, `apps/web` in Vue 3 with Feature-Sliced Design) and verify the acceptance criteria.
+- **Outcome:** Root tooling, the .NET 10 backend skeleton and the Vue 3 FSD frontend skeleton were built, verified (build, tests, dependency-rule checks, lint, Steiger) and delivered as three stacked PRs (#3 root, #4 api, #5 web) onto `main`, after one RDD review round with 6 non-blocking findings.
+- **Key decisions:**
+  - Human chose to install the missing .NET 10 SDK via `winget` rather than pause or fall back to .NET 9.
+  - Human asked mid-task to add basic per-app architecture notes to each `AGENTS.md`, to expand later.
+  - AI split delivery into three commits (root/api/web) because the diff exceeded the ~400-line review-slice guidance, and proposed single-PR vs. two-chained-PR delivery.
+  - Human overrode both delivery options and chose three separate chained PRs instead, once the review was done.
+  - Human picked the "Stacked to main" chaining strategy over the feature-branch-chain alternative when asked.
+- **Human decisions:**
+  - [Three chained PRs instead of one or two](#human-decision-three-chained-prs)
+
 ## Human
 
 Vamos a comenzar creando la arquitectura del monorepo y definiendo las herramientas/tecnologias/patrones que vamos a utilizar. 
@@ -308,6 +323,9 @@ _(2 tool calls: 2 Bash)_
 
 _[Gentle AI review consent: Review this change]_
 
+
+<a id="human-decision-three-chained-prs"></a>
+> **Human decision:** Instead of picking one of the AI's two proposed delivery shapes (single PR, or two chained PRs), decided to split the change into three chained PRs, one per commit.
 
 ## Human
 
